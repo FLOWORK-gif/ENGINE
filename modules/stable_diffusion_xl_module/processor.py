@@ -3,7 +3,7 @@
 # EMAIL SAHIDINAOLA@GMAIL.COM
 # WEBSITE WWW.TEETAH.ART
 # File NAME : C:\FLOWORK\modules\stable_diffusion_xl_module\processor.py
-# JUMLAH BARIS : 147
+# JUMLAH BARIS : 146
 #######################################################################
 
 import os
@@ -15,11 +15,12 @@ from flowork_kernel.ui_shell import shared_properties
 from flowork_kernel.ui_shell.components.LabelledCombobox import LabelledCombobox
 from flowork_kernel.utils.payload_helper import get_nested_value
 from flowork_kernel.utils.file_helper import sanitize_filename
-import shutil # (FIXED) Added missing import for file operations
+import shutil
 class StableDiffusionXLModule(BaseModule, IExecutable, IConfigurableUI, IDataPreviewer):
     """
-    (REMASTERED V3) Now delegates the actual image generation to the smart AIProviderManagerService,
-    acting as a user-friendly interface for specific local model execution.
+    (REMASTERED V4 - Final) Acts as a smart manager that gathers all necessary parameters
+    and delegates the image generation task to the central AIProviderManagerService,
+    ensuring consistent, high-quality results.
     """
     TIER = "free"
     def __init__(self, module_id, services):
@@ -29,24 +30,18 @@ class StableDiffusionXLModule(BaseModule, IExecutable, IConfigurableUI, IDataPre
     def execute(self, payload: dict, config: dict, status_updater, ui_callback, mode='EXECUTE'):
         model_folder_name = config.get('model_folder')
         endpoint_id = f"(Local Model) {model_folder_name}"
-        image_models_path = os.path.join(self.kernel.project_root_path, "ai_models", "image")
-        if not model_folder_name or not os.path.isdir(os.path.join(image_models_path, str(model_folder_name))):
-            raise FileNotFoundError(f"Selected model folder '{model_folder_name}' not found in 'ai_models/image'.")
-        prompt_from_var = config.get('prompt_source_variable')
-        prompt = ""
-        if prompt_from_var:
-            prompt = get_nested_value(payload, prompt_from_var)
+        prompt = get_nested_value(payload, config.get('prompt_source_variable')) or \
+                 get_nested_value(payload, 'data.prompt') or \
+                 config.get('prompt')
         if not prompt:
-            prompt = get_nested_value(payload, 'data.prompt')
-        if not prompt:
-            prompt = config.get('prompt', '')
-        if not prompt:
-            raise ValueError("Prompt is empty.")
-        negative_prompt = config.get('negative_prompt', '')
-        width = int(config.get('width', 1024))
-        height = int(config.get('height', 1024))
-        guidance_scale = float(config.get('guidance_scale', 7.5))
-        num_steps = int(config.get('num_inference_steps', 30))
+            raise ValueError("A prompt is required, either from a payload variable or manual input.")
+        generation_params = {
+            "negative_prompt": config.get('negative_prompt', ''),
+            "width": config.get('width', 1024),
+            "height": config.get('height', 1024),
+            "guidance_scale": config.get('guidance_scale', 7.5),
+            "num_inference_steps": config.get('num_inference_steps', 30)
+        }
         filename_prefix = config.get('output_filename_prefix', '')
         user_output_folder = config.get('output_folder', '').strip()
         save_dir = user_output_folder if user_output_folder and os.path.isdir(user_output_folder) else self.output_dir
@@ -55,26 +50,30 @@ class StableDiffusionXLModule(BaseModule, IExecutable, IConfigurableUI, IDataPre
             if not ai_manager:
                 raise RuntimeError("AIProviderManagerService is not available.")
             status_updater(f"Delegating generation to {model_folder_name}...", "INFO")
-            self.logger(f"Starting image generation with prompt: '{prompt[:50]}...'", "INFO") # English Log
-            response = ai_manager.query_ai_by_task('image', prompt, endpoint_id=endpoint_id)
+            response = ai_manager.query_ai_by_task(
+                'image',
+                prompt,
+                endpoint_id=endpoint_id,
+                **generation_params  # Kirim semua parameter tambahan
+            )
             if "error" in response:
                 raise RuntimeError(response['error'])
             image_path_from_service = response.get('data')
             if not image_path_from_service or not os.path.exists(image_path_from_service):
                 raise FileNotFoundError("AI Manager service did not return a valid image path.")
-            sanitized_prefix = sanitize_filename(filename_prefix) if filename_prefix else sanitize_filename(prompt[:20])
+            sanitized_prefix = sanitize_filename(filename_prefix) or sanitize_filename(prompt[:20])
             timestamp = time.strftime("%Y%m%d_%H%M%S")
             final_filename = f"{sanitized_prefix}_{timestamp}.png"
             final_output_path = os.path.join(save_dir, final_filename)
             shutil.move(image_path_from_service, final_output_path)
-            self.logger(f"Image moved to final destination: {final_output_path}", "INFO") # English Log
+            self.logger(f"Image moved to final destination: {final_output_path}", "INFO")
             status_updater("Image generated successfully!", "SUCCESS")
             if 'data' not in payload or not isinstance(payload['data'], dict):
                 payload['data'] = {}
             payload['data']['image_path'] = final_output_path
             return {"payload": payload, "output_name": "success"}
         except Exception as e:
-            self.logger(f"An error occurred during image generation: {e}", "ERROR") # English Log
+            self.logger(f"An error occurred during image generation: {e}", "ERROR")
             payload['error'] = str(e)
             return {"payload": payload, "output_name": "error"}
     def create_properties_ui(self, parent_frame, get_current_config, available_vars):

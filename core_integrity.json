@@ -1,0 +1,19 @@
+{
+    "ai_providers/text/gemini_provider/core/GeminiConnection.py": "0a8f88fe07ddc7af8bb1c02267f518a28e26df66e04e170874909db2d1492e9d",
+    "flowork_kernel/kernel.py": "fb88d9350b2b9a7e342b6b4d41c656bb5830c9e0e0bfb22dcbd1014d51d76c89",
+    "flowork_kernel/services/agent_executor_service/agent_executor_service.py": "284c130caccb45ba83ed9dfb9e228da962adf2b35eb42c8f511d3eab5c131a9b",
+    "flowork_kernel/services/ai_architect_service/ai_architect_service.py": "9c046f1456b0fb446a5cac1ffb4ef6dcebd59ea57814ea5fba7f0d113a0e965a",
+    "flowork_kernel/services/integrity_checker_service/integrity_checker_service.py": "8ded30189186a79e5a067f7f010d0efa0c44a9d945ca35d1bcb19e13e45ea944",
+    "flowork_kernel/services/license_manager_service/license_manager_service.py": "d2efd95325190b2fe8663fea53df60b088c73cb13d064d17b3538fb2bbc0b115",
+    "flowork_kernel/services/module_manager_service/module_manager_service.py": "3cdfa19506a70510dd12da38f0a01744ba3ef12fabc10f9aa1f0e84c8743e693",
+    "flowork_kernel/services/permission_manager_service/permission_manager_service.py": "a63922c5b17a039de5c83e0f992ec55c72eada179fab978cc6d6eb5c2b2e2470",
+    "flowork_kernel/services/startup_service/startup_service.py": "57aaced7134c1bc9b304f2eab3cbf7b5ce81fe42ad4063f3cca9a468759531d4",
+    "flowork_kernel/services/state_manager_service/state_manager_service.py": "faca7d4f57fa524ebafeca77f356d58de3e0fd28c10deb526c931d9022240e17",
+    "flowork_kernel/services/update_service/update_service.py": "d8f4d3058592a106f3402783ab44220c53ef2e20e8889daaf9e4644a854723b0",
+    "flowork_kernel/services/variable_manager_service/variable_manager_service.py": "999d1e67150b5c1029a5a20fe9290752cb84f3ea8a8654f162271f8a7add8f80",
+    "flowork_kernel/services/workflow_executor_service/workflow_executor_service.py": "5fdd78558b1b94fe51b433ecfba378c4e93afe572943456247bd4ff064908866",
+    "flowork_kernel/ui_shell/main_window.py": "ed7ea0870d8bec40b516436a771082ec2e23837ac350589ae40574e3335ab40a",
+    "flowork_kernel/ui_shell/ui_components/menubar_manager.py": "2aa8607089b48651bdf54496bd56e3383f478b5efe706f19692bec9db3210c55",
+    "plugins/flowork_core_ui/pricing_page.py": "7dff67b4013cbece9c239ae1371e96e06b16ff88f609bb5bd758fd60a70e5166",
+    "plugins/flowork_core_ui/settings_components/license_management_frame.py": "68f22cd8c3dc8d53b7aaec0c7c85070b36edf7da506d7022c8cdc4efef934827"
+}

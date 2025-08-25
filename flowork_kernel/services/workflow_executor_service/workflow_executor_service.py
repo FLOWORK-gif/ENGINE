@@ -3,7 +3,7 @@
 # EMAIL SAHIDINAOLA@GMAIL.COM
 # WEBSITE WWW.TEETAH.ART
 # File NAME : C:\FLOWORK\flowork_kernel\services\workflow_executor_service\workflow_executor_service.py
-# JUMLAH BARIS : 448
+# JUMLAH BARIS : 460
 #######################################################################
 
 import json
@@ -26,10 +26,9 @@ from flowork_kernel.ui_shell.workflow_editor_tab import WorkflowEditorTab
 import queue
 class WorkflowExecutorService(BaseService):
     """
-    The main engine for running workflows. Executes nodes sequentially based on connections,
-    handles payloads, breakpoints, and error conditions.
-    (MODIFIED) Now understands 'tool' connections for Agent Host nodes.
-    (DEBUGGING) Added intensive logging to trace Agent Host connections.
+    (REMASTERED V2) The main engine for running workflows. This version includes a critical
+    fix for branching logic to correctly handle single-path execution from nodes with multiple
+    output ports like 'IF Condition'.
     """
     def __init__(self, kernel, service_id: str):
         super().__init__(kernel, service_id)
@@ -212,7 +211,7 @@ class WorkflowExecutorService(BaseService):
                 if not start_nodes:
                     log("Execution failed: No start node found.", "ERROR")
                     return ValueError("No start node found.")
-                final_payload = self._run_all_flows(start_nodes, nodes, connections, log, status_updater, highlighter, run_on_ui, initial_payload, workflow_context_id, mode)
+                final_payload = self._run_all_flows_sequentially(start_nodes, nodes, connections, log, status_updater, highlighter, run_on_ui, initial_payload, workflow_context_id, mode)
             if isinstance(final_payload, Exception):
                 raise final_payload
         except PermissionDeniedError as e:
@@ -230,7 +229,7 @@ class WorkflowExecutorService(BaseService):
                     job_status_updater(workflow_context_id, {"status": "FAILED", "end_time": time.time(), "error": str(final_payload)})
                 fresh_settings = self._get_fresh_settings()
                 if fresh_settings.get('global_error_handler_enabled') and fresh_settings.get('global_error_workflow_preset') and not workflow_context_id.startswith("error_handler_for_"):
-                    self._execute_global_error_handler(final_payload, workflow_context_id)
+                    self._execute_global_error_handler(final_payload, workflow_context_id) # Corrected variable name
             else:
                 if callable(job_status_updater):
                      job_status_updater(workflow_context_id, {"status": "SUCCEEDED", "end_time": time.time(), "result": "Execution completed successfully."})
@@ -281,6 +280,13 @@ class WorkflowExecutorService(BaseService):
                 return result
             final_payload = result
         return final_payload
+    def _run_all_flows_sequentially(self, start_nodes, nodes, connections, log, update_status, highlight, run_on_ui, initial_payload, workflow_context_id, mode):
+        final_payload = initial_payload
+        for start_node_id in start_nodes:
+             final_payload = self._traverse_and_execute(start_node_id, nodes, connections, final_payload, log, update_status, highlight, run_on_ui, workflow_context_id, mode)
+             if isinstance(final_payload, Exception):
+                 return final_payload
+        return final_payload
     def _find_and_execute_next_nodes(self, current_node_id, execution_result, nodes, connections, log, update_status, highlight, run_on_ui, workflow_context_id="default_workflow", mode: str = 'EXECUTE'):
         if self._stop_event.is_set():
             return execution_result
@@ -292,9 +298,13 @@ class WorkflowExecutorService(BaseService):
             expected_output_name = execution_result["output_name"]
         next_nodes_to_execute = []
         for conn_id, conn_data in connections.items():
-            if conn_data.get('from') == current_node_id:
-                current_port = conn_data.get('source_port_name')
-                if (expected_output_name is not None and current_port == expected_output_name) or (expected_output_name is None and (current_port is None or current_port == "")):
+            if conn_data.get('from') == current_node_id and conn_data.get('type', 'data') != 'tool':
+                source_port_name = conn_data.get('source_port_name')
+                if expected_output_name is not None:
+                    if source_port_name == expected_output_name:
+                        self._record_connection_event(workflow_context_id, conn_id, payload_for_next)
+                        next_nodes_to_execute.append((conn_id, conn_data.get('to'), payload_for_next))
+                else:
                     self._record_connection_event(workflow_context_id, conn_id, payload_for_next)
                     next_nodes_to_execute.append((conn_id, conn_data.get('to'), payload_for_next))
         if not next_nodes_to_execute:
@@ -313,7 +323,7 @@ class WorkflowExecutorService(BaseService):
             for conn_id, next_node_id, payload in next_nodes_to_execute:
                 if not next_node_id: continue
                 if callable(highlight): run_on_ui(highlight, 'connection', conn_id); time.sleep(0.1)
-                payload_copy = json.loads(json.dumps(payload))
+                payload_copy = json.loads(json.dumps(payload, default=str)) # Use default=str for safety
                 thread = threading.Thread(target=target_wrapper, args=(next_node_id, payload_copy))
                 threads.append(thread)
                 thread.start()
@@ -353,7 +363,7 @@ class WorkflowExecutorService(BaseService):
                     permission_manager.check_permission(capability_needed)
             module_instance = module_manager.get_instance(module_id_to_run)
             if not module_instance: raise ValueError(f"Module '{module_id_to_run}' not found or is paused.")
-            if callable(highlight):
+            if callable(highlight) and not getattr(module_instance, 'MANAGES_OWN_HIGHLIGHTING', False):
                 run_on_ui(highlight, 'node', current_node_id); time.sleep(0.1)
             log(f"INFO: Executing node '{node_name_for_log}' (Module: {module_id_to_run})", "INFO")
             node_config = node_info.get("config_values", {})
@@ -362,6 +372,8 @@ class WorkflowExecutorService(BaseService):
             kwargs_for_execute = {}
             if module_id_to_run == 'agent_host_module':
                 log("Executor: Agent Host Node detected. Gathering connected components.", "DEBUG")
+                kwargs_for_execute['highlighter'] = highlight
+                kwargs_for_execute['connections'] = connections
                 connected_tools = []
                 connected_brain = None
                 connected_prompt = None

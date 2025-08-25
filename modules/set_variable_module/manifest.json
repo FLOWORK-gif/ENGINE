@@ -26,6 +26,12 @@
             "label": "loc.prop_variables_label"
         }
     ],
+    "output_ports": [
+        {
+            "name": "success",
+            "display_name": "Success"
+        }
+    ],
     "output_schema": [
         {
             "name": "[dynamic]",

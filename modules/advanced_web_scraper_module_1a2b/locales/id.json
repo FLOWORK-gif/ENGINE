@@ -10,15 +10,5 @@
     "prop_extraction_rules_label": "Extraction Rules (data_name: selector [option])",
     "prop_exclude_selectors_label": "Exclude CSS Selectors (one per line)",
     "prop_wait_time_label": "Wait Time (seconds)",
-    "prop_headless_mode_label": "Run Headless (No UI)",
-    "prop_extraction_rules_source_label": "Sumber Aturan Ekstraksi",
-    "prop_rules_source_variable_label": "Aturan dari Variabel:",
-    "prop_scraper_options_label": "Opsi Scraper",
-    "prop_fetch_only_html_label": "Ambil HTML Mentah Saja (Tanpa Ekstraksi)",
-    "prop_fetch_only_html_tooltip": "Jika dicentang, modul ini hanya akan mengambil konten HTML halaman dan mengeluarkannya ke 'data.html_content', mengabaikan semua aturan ekstraksi.",
-    "prop_run_mode_label": "Mode Eksekusi",
-    "run_mode_option_extract": "Ekstrak Seluruh Halaman",
-    "run_mode_option_interact": "Lakukan Langkah Interaksi",
-    "prop_interaction_steps_label": "Skenario Interaksi",
-    "prop_interaction_steps_help": "Satu aksi per baris. Format: AKSI | SELEKTOR | NILAI. Aksi tersedia: NAVIGATE, CLICK, TYPE, WAIT, EXTRACT. Contoh Selektor: id=username atau css_selector=button.submit"
+    "prop_headless_mode_label": "Run Headless (No UI)"
 }

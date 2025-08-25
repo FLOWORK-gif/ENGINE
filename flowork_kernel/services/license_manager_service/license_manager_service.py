@@ -3,7 +3,7 @@
 # EMAIL SAHIDINAOLA@GMAIL.COM
 # WEBSITE WWW.TEETAH.ART
 # File NAME : C:\FLOWORK\flowork_kernel\services\license_manager_service\license_manager_service.py
-# JUMLAH BARIS : 197
+# JUMLAH BARIS : 214
 #######################################################################
 
 import os
@@ -19,7 +19,10 @@ import shutil
 from tkinter import messagebox
 from ..base_service import BaseService
 from flowork_kernel.exceptions import SignatureVerificationError
-from flowork_kernel.kernel import Kernel
+from flowork_kernel.api_client import ApiClient # (MODIFIED) We still need ApiClient
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from flowork_kernel.kernel import Kernel
 try:
     from cryptography.hazmat.primitives import hashes as crypto_hashes, serialization
     from cryptography.hazmat.primitives.asymmetric import padding
@@ -28,11 +31,16 @@ try:
 except ImportError:
     CRYPTO_AVAILABLE = False
 class LicenseManagerService(BaseService):
-    """
-    Manages all aspects of software licensing.
-    This is the definitive version with all required methods.
-    """
-    PUBLIC_KEY_PEM_STRING = """-----BEGIN PUBLIC KEY-----
+    LICENSE_PUBLIC_KEY_PEM_STRING = """-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAysqZG2+F82W0TgLHmF3Y
+0GRPEZvXvmndTY84N/wA1ljt+JxMBVsmcVTkv8f1TrmFRD19IDzl2Yzb2lgqEbEy
+GFxHhudC28leDsVEIp8B+oYWVm8Mh242YKYK8r5DAvr9CPQivnIjZ4BWgKKddMTd
+harVxLF2CoSoTs00xWKd6VlXfoW9wdBvoDVifL+hCMepgLLdQQE4HbamPDJ3bpra
+pCgcAD5urmVoJEUJdjd+Iic27RBK7jD1dWDO2MASMh/0IyXyM8i7RDymQ88gZier
+U0OdWzeCWGyl4EquvR8lj5GNz4vg2f+oEY7h9AIC1f4ARtoihc+apSntqz7nAqa/
+sQIDAQAB
+-----END PUBLIC KEY-----"""
+    REMOTE_CONFIG_PUBLIC_KEY_PEM_STRING = """-----BEGIN PUBLIC KEY-----
 MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAysqZG2+F82W0TgLHmF3Y
 0GRPEZvXvmndTY84N/wA1ljt+JxMBVsmcVTkv8f1TrmFRD19IDzl2Yzb2lgqEbEy
 GFxHhudC28leDsVEIp8B+oYWVm8Mh242YKYK8r5DAvr9CPQivnIjZ4BWgKKddMTd
@@ -42,73 +50,99 @@ U0OdWzeCWGyl4EquvR8lj5GNz4vg2f+oEY7h9AIC1f4ARtoihc+apSntqz7nAqa/
 sQIDAQAB
 -----END PUBLIC KEY-----"""
     LICENSE_FILE_NAME = "license.seal"
-    HEROKU_API_URL = "https://flowork-addon-gate-ca4ad3903a88.herokuapp.com/"
-    def __init__(self, kernel, service_id: str):
+    REMOTE_TIER_CONFIG_URL = "https://raw.githubusercontent.com/FLOWORK-gif/ASSET/refs/heads/main/flowork_tier_config.json"
+    REMOTE_TIER_SIGNATURE_URL = "https://raw.githubusercontent.com/FLOWORK-gif/ASSET/refs/heads/main/flowork_tier_config.sig"
+    def __init__(self, kernel: 'Kernel', service_id: str):
         super().__init__(kernel, service_id)
         self.logger = self.kernel.write_to_log
-        self.public_key = None
+        self.license_public_key = None
+        self.config_public_key = None
         self.license_data = {}
         self.is_local_license_valid = False
         self.server_error = None
-        self._load_public_key()
-    def _load_public_key(self):
-        """Loads the RSA public key from the hardcoded string."""
+        self.remote_permission_rules = None
+        self.api_client = ApiClient(kernel=self.kernel)
+        self._load_public_keys()
+    def _fetch_remote_tier_config(self):
+        try:
+            self.logger("LicenseManager: Fetching remote tier configuration and signature...", "INFO") # English Log
+            config_response = requests.get(self.REMOTE_TIER_CONFIG_URL, timeout=10)
+            config_response.raise_for_status()
+            config_content_bytes = config_response.content
+            sig_response = requests.get(self.REMOTE_TIER_SIGNATURE_URL, timeout=10)
+            sig_response.raise_for_status()
+            signature_b64 = sig_response.text.strip()
+            if not self.config_public_key:
+                raise SignatureVerificationError("Config public key is not loaded. Cannot verify remote config.")
+            signature_bytes = base64.b64decode(signature_b64)
+            self.config_public_key.verify(signature_bytes, config_content_bytes, padding.PKCS1v15(), crypto_hashes.SHA256())
+            self.remote_permission_rules = json.loads(config_content_bytes)
+            self.logger("LicenseManager: Remote tier configuration loaded and signature VERIFIED successfully.", "SUCCESS") # English Log
+            return True
+        except Exception as e:
+            self.logger(f"LicenseManager: CRITICAL: Could not fetch or verify remote config: {e}. Defaulting to SECURE mode (Monetization ON).", "CRITICAL") # English Log
+            self.remote_permission_rules = {"monetization_active": True}
+            return False
+    def verify_license_on_startup(self):
+        self.logger("LicenseManager: Starting license verification process V4 (Supabase-First)...", "INFO") # English Log
+        self._fetch_remote_tier_config()
+        monetization_is_active = self.remote_permission_rules and self.remote_permission_rules.get("monetization_active", True)
+        if not monetization_is_active:
+            override_tier = self.remote_permission_rules.get("default_tier_override", "architect")
+            self.kernel.is_premium = True
+            self.kernel.license_tier = override_tier
+            self.logger(f"Monetization is INACTIVE. Granting full access with tier: '{override_tier}'.", "WARN") # English Log
+            return
+        self.logger("Monetization is ACTIVE. Verifying user's tier...", "INFO") # English Log
+        if self.kernel.current_user:
+            user_tier = self.kernel.current_user.get('tier', 'free')
+            self.kernel.license_tier = user_tier
+            self.kernel.is_premium = self.kernel.TIER_HIERARCHY.get(user_tier, 0) > 0
+            self.logger(f"User is logged in. Tier confirmed as '{user_tier.upper()}' from Supabase.", "SUCCESS") # English Log
+            return
+        local_data = self._verify_local_license_file()
+        if local_data:
+            self.is_local_license_valid = True
+            self.license_data = local_data
+            self.kernel.license_tier = local_data.get('tier', 'free')
+            self.kernel.is_premium = self.kernel.TIER_HIERARCHY.get(self.kernel.license_tier, 0) > 0
+            self.logger(f"User not logged in, but a valid local license file was found. Tier set to '{self.kernel.license_tier.upper()}'.", "INFO") # English Log
+        else:
+            self.is_local_license_valid = False
+            self.kernel.is_premium = False
+            self.kernel.license_tier = "free"
+            self.logger("No logged-in user and no valid local license. App will run in free mode.", "WARN") # English Log
+    def _load_public_keys(self):
         if not CRYPTO_AVAILABLE:
-            self.logger("Cryptography library not found. License features will be disabled.", "CRITICAL")
+            self.logger("Cryptography library not found. Security features will be disabled.", "CRITICAL") # English Log
             return
         try:
-            pem_data = self.PUBLIC_KEY_PEM_STRING.strip().encode('utf-8')
-            self.public_key = serialization.load_pem_public_key(pem_data)
-            self.logger("Public key for license verification loaded successfully.", "SUCCESS")
+            pem_data = self.LICENSE_PUBLIC_KEY_PEM_STRING.strip().encode('utf-8')
+            self.license_public_key = serialization.load_pem_public_key(pem_data)
+            self.logger("Public key for license verification loaded successfully.", "SUCCESS") # English Log
         except Exception as e:
-            self.public_key = None
-            self.logger(f"Failed to load public key: {e}. License verification will fail.", "ERROR")
+            self.license_public_key = None
+            self.logger(f"Failed to load license public key: {e}. License verification will fail.", "ERROR") # English Log
+        try:
+            pem_data = self.REMOTE_CONFIG_PUBLIC_KEY_PEM_STRING.strip().encode('utf-8')
+            self.config_public_key = serialization.load_pem_public_key(pem_data)
+            self.logger("Public key for remote config verification loaded successfully.", "SUCCESS") # English Log
+        except Exception as e:
+            self.config_public_key = None
+            self.logger(f"Failed to load remote config public key: {e}. Remote config verification will fail.", "ERROR") # English Log
     def _get_machine_id(self) -> str:
-        """Generates a unique and consistent machine ID based on the MAC address."""
         try:
             mac = ':'.join(['{:02x}'.format((uuid.getnode() >> i) & 0xff) for i in range(0, 8 * 6, 8)][::-1])
             machine_id = hashlib.sha256(mac.encode()).hexdigest()
-            self.logger(f"Generated Machine ID: {machine_id[:12]}...", "DEBUG")
+            self.logger(f"Generated Machine ID: {machine_id[:12]}...", "DEBUG") # English Log
             return machine_id
         except Exception as e:
-            self.logger(f"Could not generate machine ID: {e}. Using a fallback ID.", "WARN")
+            self.logger(f"Could not generate machine ID: {e}. Using a fallback ID.", "WARN") # English Log
             return hashlib.sha256("fallback_flowork_synapse_id".encode()).hexdigest()
     def _get_license_file_path(self):
-        """Constructs the full path to the license file."""
         return os.path.join(self.kernel.data_path, self.LICENSE_FILE_NAME)
-    def verify_license_on_startup(self):
-        """
-        The main gatekeeper function called by StartupService.
-        Performs a full validation chain: local file -> server.
-        """
-        self.logger("LicenseManager: Starting license verification process...", "INFO")
-        local_data = self._verify_local_license_file()
-        if not local_data:
-            self.logger("Local license file not found or invalid. App will run in free mode.", "WARN")
-            self.kernel.is_premium = False
-            self.kernel.license_tier = "free"
-            return
-        self.is_local_license_valid = True
-        self.license_data = local_data
-        try:
-            is_server_ok, server_message = self._verify_with_server()
-            if is_server_ok:
-                self.logger("Server verification successful. Premium mode activated.", "SUCCESS")
-                self.kernel.is_premium = True
-                self.kernel.license_tier = self.license_data.get('tier', 'basic')
-            else:
-                self.logger(f"Server verification failed: {server_message}. Running in free mode.", "ERROR")
-                self.kernel.is_premium = False
-                self.kernel.license_tier = "free"
-                messagebox.showerror("License Error", f"License validation failed: {server_message}")
-        except requests.exceptions.RequestException as e:
-            self.logger(f"Could not connect to license server: {e}. Defaulting to FREE mode.", "ERROR")
-            self.kernel.is_premium = False
-            self.kernel.license_tier = "free"
-            messagebox.showwarning("License Server Unreachable", "Could not connect to the license server. The application will run in FREE mode.")
     def _verify_local_license_file(self):
-        """Verifies the digital signature of the local license.seal file."""
-        if not self.public_key: return None
+        if not self.license_public_key: return None
         license_path = self._get_license_file_path()
         if not os.path.exists(license_path): return None
         try:
@@ -117,82 +151,65 @@ sQIDAQAB
             if not data_to_verify or not signature_b64: return None
             data_bytes = json.dumps(data_to_verify, separators=(',', ':')).encode('utf-8')
             signature_bytes = base64.b64decode(signature_b64)
-            self.public_key.verify(signature_bytes, data_bytes, padding.PKCS1v15(), crypto_hashes.SHA256())
+            self.license_public_key.verify(signature_bytes, data_bytes, padding.PKCS1v15(), crypto_hashes.SHA256())
             return data_to_verify
         except Exception as e:
-            self.logger(f"CRITICAL: License file tampered with or invalid. Deleting it. Error: {e}", "CRITICAL")
-            try:
-                os.remove(license_path)
-            except OSError:
-                pass
+            self.logger(f"CRITICAL: License file tampered with or invalid. Deleting it. Error: {e}", "CRITICAL") # English Log
+            try: os.remove(license_path)
+            except OSError: pass
             return None
-    def _verify_with_server(self):
-        """Checks the license status against the Heroku server."""
-        expiry_date_str = self.license_data.get("expiry_date", "")
-        if expiry_date_str and expiry_date_str != "never":
-            try:
-                expiry_date = datetime.datetime.strptime(expiry_date_str, "%Y-%m-%d").date()
-                if datetime.date.today() > expiry_date:
-                    return False, f"This license has expired on {expiry_date_str}."
-            except ValueError:
-                 self.logger(f"License has an invalid date format: {expiry_date_str}", "WARN")
-        api_url = f"{self.HEROKU_API_URL}validate-license"
-        payload = {"license_key": self.license_data.get('license_key'), "machine_id": self._get_machine_id()}
-        response = requests.post(api_url, json=payload, timeout=15)
-        if response.status_code == 200:
-            return True, "License is valid."
-        else:
-            try:
-                error_msg = response.json().get("error", "Unknown server error.")
-            except json.JSONDecodeError:
-                error_msg = f"Server returned non-JSON response (Status: {response.status_code})."
-            return False, error_msg
-    def activate_license_from_file(self, file_path: str):
-        """Activates a new license using a .seal file provided by the user."""
+    def activate_license_on_server(self, full_license_content: dict):
+        if not self.kernel.current_user or not self.kernel.current_user.get('session_token'):
+            return False, "You must be logged in to activate a new license."
+        self.logger("Attempting to activate license via Supabase Edge Function...", "INFO") # English Log
+        function_url = f"{self.api_client.supabase_url}/functions/v1/activate-license"
+        session_token = self.kernel.current_user.get('session_token')
+        headers = {
+            'Authorization': f'Bearer {session_token}',
+            'apikey': self.api_client.supabase_key,
+            'Content-Type': 'application/json'
+        }
+        payload = {
+            "license_content": full_license_content,
+            "machine_id": self._get_machine_id()
+        }
         try:
-            with open(file_path, 'r', encoding='utf-8') as f: content = json.load(f)
-            data_to_verify = content.get('data')
-            signature_bytes = base64.b64decode(content.get('signature'))
-            data_bytes = json.dumps(data_to_verify, separators=(',', ':')).encode('utf-8')
-            self.public_key.verify(signature_bytes, data_bytes, padding.PKCS1v15(), crypto_hashes.SHA256())
-        except Exception:
-            messagebox.showerror("Activation Failed", "The selected license file is not valid or has been tampered with.")
-            return
-        api_url = f"{self.HEROKU_API_URL}activate-license"
-        payload = {"license_key": data_to_verify.get('license_key'), "machine_id": self._get_machine_id()}
-        try:
-            response = requests.post(api_url, json=payload, timeout=20)
-            if response.status_code != 200: raise Exception(response.json().get("error", "Unknown activation error."))
-            shutil.copyfile(file_path, self._get_license_file_path())
-            messagebox.showinfo("Activation Successful", "License activated! The application will now restart.")
-            self.kernel.get_service("event_bus").publish("RESTART_APP", {})
+            response = requests.post(function_url, headers=headers, json=payload, timeout=20)
+            if response.status_code != 200:
+                error_msg = response.json().get("error", "Unknown activation error from server.")
+                raise Exception(error_msg)
+            with open(self._get_license_file_path(), 'w', encoding='utf-8') as f:
+                json.dump(full_license_content, f, indent=4)
+            self.logger("License activated on Supabase and file saved locally.", "SUCCESS") # English Log
+            success_refresh, user_data = self.api_client.get_user_profile_by_token(session_token)
+            if success_refresh:
+                self.kernel.current_user = user_data
+                self.verify_license_on_startup()
+            return True, "License activated successfully. Please restart the application."
         except Exception as e:
-            messagebox.showerror("Activation Failed", f"Could not activate license on server: {e}")
+            self.logger(f"Supabase function call for activation failed: {e}", "ERROR") # English Log
+            return False, f"Could not activate license on server: {e}"
     def deactivate_license_on_server(self):
-        """
-        (PERBAIKAN) Deactivates the current license. Now returns a (success, message) tuple.
-        It no longer shows popups directly.
-        """
-        if not self.is_local_license_valid:
-            return False, "No active license found on this computer."
-        api_url = f"{self.HEROKU_API_URL}deactivate-license"
-        payload = {"license_key": self.license_data.get('license_key'), "machine_id": self._get_machine_id()}
+        if not self.kernel.current_user or not self.kernel.current_user.get('session_token'):
+            return False, "You must be logged in to deactivate a license."
+        function_url = f"{self.api_client.supabase_url}/functions/v1/deactivate-license"
+        session_token = self.kernel.current_user.get('session_token')
+        headers = {
+            'Authorization': f'Bearer {session_token}',
+            'apikey': self.api_client.supabase_key
+        }
         try:
-            response = requests.post(api_url, json=payload, timeout=20)
+            response = requests.post(function_url, headers=headers, timeout=20)
             if response.status_code != 200:
                 raise Exception(response.json().get("error", "Unknown deactivation error from server."))
             local_license_path = self._get_license_file_path()
             if os.path.exists(local_license_path):
                 os.remove(local_license_path)
+            success_refresh, user_data = self.api_client.get_user_profile_by_token(session_token)
+            if success_refresh:
+                self.kernel.current_user = user_data
+                self.verify_license_on_startup()
             return True, "License deactivated successfully. The application will now restart in free mode."
         except Exception as e:
+            self.logger(f"Supabase function call for deactivation failed: {e}", "ERROR") # English Log
             return False, f"An error occurred during deactivation: {e}"
-    def check_for_updates(self):
-        self.logger("check_for_updates() is deprecated and now handled by UpdateService.", "WARN")
-        return None
-    def verify_license(self):
-        self.logger("verify_license() is deprecated and now handled by verify_license_on_startup().", "WARN")
-        return "free"
-    def activate_license_on_server(self, local_license_data: dict):
-        self.logger("activate_license_on_server() is deprecated.", "WARN")
-        return False, "This function is no longer in use."

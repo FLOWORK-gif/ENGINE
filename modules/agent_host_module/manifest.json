@@ -3,7 +3,7 @@
     "name": "Agent Host",
     "version": "2.2",
     "icon_file": "icon.png",
-    "author": "AWENK AUDICO & Gemini",
+    "author": "AWENK AUDICO",
     "email": "contributor@teetah.art",
     "website": "www.teetah.art",
     "description": "Acts as an autonomous agent on the canvas, using connected nodes as its tools, brain, and prompt to achieve a high-level objective.",

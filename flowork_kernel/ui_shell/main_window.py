@@ -3,7 +3,7 @@
 # EMAIL SAHIDINAOLA@GMAIL.COM
 # WEBSITE WWW.TEETAH.ART
 # File NAME : C:\FLOWORK\flowork_kernel\ui_shell\main_window.py
-# JUMLAH BARIS : 329
+# JUMLAH BARIS : 353
 #######################################################################
 
 import ttkbootstrap as ttk
@@ -24,11 +24,14 @@ from .popups.PopupManager import PopupManager
 from .lifecycle.AppLifecycleHandler import AppLifecycleHandler
 import webbrowser
 from flowork_kernel.exceptions import PermissionDeniedError
+from .authentication_dialog import AuthenticationDialog
+from flowork_kernel.api_client import ApiClient
 class MainWindow(ttk.Window):
     def __init__(self, kernel_instance):
         super().__init__(themename="darkly")
         self.kernel = kernel_instance
         self.loc = self.kernel.get_service("localization_manager")
+        self.api_client = ApiClient(kernel=self.kernel)
         self.title(self.loc.get('app_title'))
         self.geometry("1280x800")
         self.workflow_editor_tab = None
@@ -39,8 +42,8 @@ class MainWindow(ttk.Window):
         try:
             self.recorder_service = self.kernel.get_service("screen_recorder_service")
         except PermissionDeniedError:
-            self.kernel.write_to_log("Screen Recorder feature disabled due to insufficient license tier.", "WARN") # English Log
-            self.recorder_service = None # Set to None if permission is denied
+            self.kernel.write_to_log("Screen Recorder feature disabled due to insufficient license tier.", "WARN")
+            self.recorder_service = None
         self.is_ui_recording = False
         self.record_start_time = None
         self.record_timer_job = None
@@ -52,7 +55,7 @@ class MainWindow(ttk.Window):
             self.tab_manager.set_ui_handles(self, self.notebook)
             self.tab_manager.load_session_state()
         else:
-            self.kernel.write_to_log("CRITICAL: TabManagerService not found. UI cannot function.", "CRITICAL") # English Log
+            self.kernel.write_to_log("CRITICAL: TabManagerService not found. UI cannot function.", "CRITICAL")
             messagebox.showerror(self.loc.get('fatal_error_title', fallback="Fatal Error"), self.loc.get('tab_manager_load_error', fallback="TabManagerService could not be loaded. The application cannot continue."))
             self.destroy()
             return
@@ -64,39 +67,78 @@ class MainWindow(ttk.Window):
             self.loc.get('notification_ready_message', fallback="Welcome to the future of automation."),
             "SUCCESS")
         )
-    def handle_license_activation_request(self):
-        license_service = self.kernel.get_service("license_manager_service")
-        if not license_service:
-            messagebox.showerror(self.loc.get('error_title', fallback="Error"), self.loc.get('service_unavailable_error', service_name="License Manager"))
+    def _open_authentication_dialog(self):
+        if self.kernel.current_user:
+            user_email = self.kernel.current_user.get('email', 'N/A')
+            messagebox.showinfo("Already Logged In", f"You are already logged in as {user_email}.", parent=self)
             return
+        AuthenticationDialog(self, self.kernel)
+    def _on_user_login(self, event_data):
+        self.kernel.write_to_log("MainWindow received USER_LOGGED_IN event. Updating status bar.", "INFO")
+        user_tier = self.kernel.current_user.get('tier', 'free').capitalize()
+        self.user_status_label.config(text=f"Status: Tier {user_tier}")
+    def _on_user_logout(self, event_data):
+        self.kernel.write_to_log("MainWindow received USER_LOGGED_OUT event. Updating UI.", "INFO")
+        self.user_status_label.config(text="Guest Mode")
+    def handle_license_activation_request(self):
+        self.kernel.write_to_log("License activation process started by user.", "INFO")
         filepath = filedialog.askopenfilename(
             title=self.loc.get('select_license_file_title', fallback="Select Your license.seal File"),
             filetypes=[(self.loc.get('license_seal_filetype', fallback="License Seal File"), "*.seal")]
         )
         if not filepath:
-            self.kernel.write_to_log("License activation cancelled by user.", "WARN") # English Log
+            self.kernel.write_to_log("License activation cancelled by user.", "WARN")
             return
-        threading.Thread(target=license_service.activate_license_from_file, args=(filepath,), daemon=True).start()
+        try:
+            with open(filepath, 'r', encoding='utf-8') as f:
+                license_content = json.load(f)
+            if "data" not in license_content:
+                messagebox.showerror(self.loc.get('error_title', fallback="Error"), self.loc.get('license_invalid_format_error', fallback="Invalid license file format: missing 'data' block."))
+                return
+            threading.Thread(target=self._run_online_activation, args=(license_content,), daemon=True).start()
+        except Exception as e:
+            self.kernel.write_to_log(f"Failed to read license file: {e}", "ERROR")
+            messagebox.showerror(self.loc.get('error_title', fallback="Error"), self.loc.get('license_process_error', fallback=f"Could not process the license file. Error: {e}", error=e))
     def handle_license_deactivation_request(self):
-        license_service = self.kernel.get_service("license_manager_service")
-        if not license_service:
-            messagebox.showerror(self.loc.get('error_title', fallback="Error"), self.loc.get('service_unavailable_error', service_name="License Manager"))
-            return
         if messagebox.askyesno(
             self.loc.get('settings_license_deactivate_confirm_title', fallback="Confirm Deactivation"),
             self.loc.get('settings_license_deactivate_confirm_message', fallback="Are you sure? This will release the license from this computer."),
             parent=self
         ):
-            threading.Thread(target=license_service.deactivate_license_on_server, daemon=True).start()
+            threading.Thread(target=self._deactivate_worker, daemon=True).start()
+    def _deactivate_worker(self):
+        success, message = self.api_client.deactivate_license()
+        self.after(0, self._on_deactivate_complete, success, message)
+    def _on_deactivate_complete(self, success, message):
+        if success:
+            messagebox.showinfo(
+                self.loc.get("messagebox_success_title", fallback="Success"),
+                message
+            )
+            self.api_client.restart_application()
+        else:
+            messagebox.showerror(self.loc.get("messagebox_error_title", fallback="Failed"), message, parent=self)
     def _create_status_bar(self):
         self.status_bar = ttk.Frame(self, height=30, bootstyle="secondary")
         self.status_bar.pack(side="bottom", fill="x", padx=2, pady=(0, 2))
         self.status_bar.pack_propagate(False)
         self.status_label = ttk.Label(self.status_bar, text=self.loc.get('status_bar_ready', fallback="Ready."), anchor="w", bootstyle="inverse-secondary")
         self.status_label.pack(side="left", padx=10)
+        right_status_frame = ttk.Frame(self.status_bar, bootstyle="secondary")
+        right_status_frame.pack(side="right", padx=10)
+        if not self.kernel.is_monetization_active():
+            donate_button = ttk.Button(
+                right_status_frame,
+                text="❤️Donate❤️",
+                bootstyle="danger-link",
+                command=lambda: webbrowser.open("https://donate.flowork.art/") # (COMMENT) Direct link to donation page
+            )
+            donate_button.pack(side="right", padx=(10, 0))
+        self.user_status_label = ttk.Label(right_status_frame, text="Guest Mode", anchor="e", bootstyle="inverse-secondary")
+        self.user_status_label.pack(side="right", padx=(10, 0))
         if self.recorder_service:
-            recorder_frame = ttk.Frame(self.status_bar, bootstyle="secondary")
-            recorder_frame.pack(side="right", padx=10)
+            recorder_frame = ttk.Frame(right_status_frame, bootstyle="secondary")
+            recorder_frame.pack(side="right")
             self.record_timer_label = ttk.Label(recorder_frame, text="00:00:00", bootstyle="inverse-secondary")
             self.record_timer_label.pack(side="left", padx=(0, 10))
             self.record_button = ttk.Button(recorder_frame, text="🔴", bootstyle="danger", command=self._on_start_record_click)
@@ -147,6 +189,8 @@ class MainWindow(ttk.Window):
     def _subscribe_to_events(self):
         event_bus = self.kernel.get_service("event_bus")
         if event_bus:
+            event_bus.subscribe("USER_LOGGED_IN", "main_window_status_updater", self._on_user_login)
+            event_bus.subscribe("USER_LOGGED_OUT", "main_window_status_updater", self._on_user_logout)
             event_bus.subscribe("AI_ANALYSIS_STARTED", "main_window_status", self._on_ai_analysis_started)
             event_bus.subscribe("AI_ANALYSIS_PROGRESS", "main_window_status", self._on_ai_analysis_progress)
             event_bus.subscribe("AI_ANALYSIS_FINISHED", "main_window_status", self._on_ai_analysis_finished)
@@ -159,7 +203,7 @@ class MainWindow(ttk.Window):
     def add_notification(self, title: str, message: str, level: str = "INFO"):
         self.popup_manager.show_notification(title, message, level)
     def refresh_ui_components(self):
-        self.kernel.write_to_log("UI: Rebuilding dynamic menubar...", "DEBUG") # English Log
+        self.kernel.write_to_log("UI: Rebuilding dynamic menubar...", "DEBUG")
         if self.menubar_manager:
             self.menubar_manager.build_menu()
         for tab_id in self.notebook.tabs():
@@ -171,7 +215,7 @@ class MainWindow(ttk.Window):
                 if hasattr(tab_widget, 'apply_styles') and theme_manager:
                     tab_widget.apply_styles(theme_manager.get_colors())
             except Exception as e:
-                self.kernel.write_to_log(f"Failed to refresh components in tab ID {tab_id}: {e}", "ERROR") # English Log
+                self.kernel.write_to_log(f"Failed to refresh components in tab ID {tab_id}: {e}", "ERROR")
     def apply_theme(self, theme_id):
         self.apply_manual_styles()
         self.refresh_ui_components()
@@ -222,15 +266,12 @@ class MainWindow(ttk.Window):
         ):
             self.save_layout_and_session()
     def _clear_cache_action(self):
-        """
-        Calls the proper cache clearing function from the active tab's action handler.
-        """
-        self.kernel.write_to_log("DEBUG: Clear Cache action triggered.", "WARN") # English Log
+        self.kernel.write_to_log("DEBUG: Clear Cache action triggered.", "WARN")
         active_tab_widget = self.notebook.nametowidget(self.notebook.select())
         if isinstance(active_tab_widget, WorkflowEditorTab) and hasattr(active_tab_widget, 'action_handler'):
             active_tab_widget.action_handler.clear_cache()
         else:
-            self.kernel.write_to_log("CLEAR CACHE FAILED: Active tab is not a workflow editor or has no action handler.", "ERROR") # English Log
+            self.kernel.write_to_log("CLEAR CACHE FAILED: Active tab is not a workflow editor or has no action handler.", "ERROR")
             messagebox.showwarning(self.loc.get('action_failed_title', fallback="Action Failed"), self.loc.get('action_workflow_tab_only', fallback="This action can only be performed on a Dashboard/Workflow tab."))
     def add_dynamic_menu_item(self, parent_menu_label, item_label, item_command):
         if parent_menu_label in self.main_menus:
@@ -269,44 +310,30 @@ class MainWindow(ttk.Window):
             self.kernel.write_to_log(self.loc.get('layout_and_session_saved', fallback="Layout and Session saved successfully!"), "SUCCESS")
         else:
             error_message = f"Failed to save tab session: {response}"
-            self.kernel.write_to_log(error_message, "ERROR") # English Log
+            self.kernel.write_to_log(error_message, "ERROR")
             messagebox.showerror(self.loc.get("error_title"), error_message)
     def _open_managed_tab(self, tab_key):
         self.tab_manager.open_managed_tab(tab_key)
     def _show_about_dialog(self):
-        base_message = self.loc.get('about_message', fallback="Flowork: The Limitless Visual Automation Platform")
-        license_status = f"Tier: {self.kernel.license_tier.upper()}"
-        final_message = f"{base_message}\n\nLicense Status: {license_status}"
+        base_title = "Flowork: The Limitless Visual Automation Platform"
+        dev_info = (
+            "-----------------------------------\n"
+            "This platform is designed to transform complex ideas into elegant and efficient automated workflows.\n\nFrom daily tasks to intricate business processes, Flowork is your canvas for automation creativity.\n\n-- Core Development Team --\nLead Developer: Awenk Audico (awenkaudico@teetah.art)\nPlugin Architect: Imam Oechil\nModule Specialist: Irzad\nWidget Master: Teguh FX\n\nwww.teetah.art"
+        )
+        license_manager = self.kernel.get_service("license_manager_service")
+        monetization_is_active = license_manager and license_manager.remote_permission_rules and license_manager.remote_permission_rules.get("monetization_active")
+        if monetization_is_active:
+            license_status = f"License Status: Tier {self.kernel.license_tier.upper()}"
+            final_message = f"{base_title}\n\n{license_status}\n{dev_info}"
+        else:
+            final_message = f"{base_title}\n{dev_info}"
         messagebox.showinfo(
             self.loc.get('about_title', fallback="About Flowork"),
             final_message
         )
-    def prompt_for_license_file(self):
-        self.kernel.write_to_log("License activation process started by user.", "INFO") # English Log
-        filepath = filedialog.askopenfilename(
-            title=self.loc.get('select_license_file_title', fallback="Select Your license.seal File"),
-            filetypes=[(self.loc.get('license_seal_filetype', fallback="License Seal File"), "*.seal")]
-        )
-        if not filepath:
-            self.kernel.write_to_log("License activation cancelled by user.", "WARN") # English Log
-            return
-        try:
-            destination_path = os.path.join(self.kernel.data_path, "license.seal")
-            shutil.copyfile(filepath, destination_path)
-            self.kernel.write_to_log(f"New license.seal file copied to {destination_path}", "SUCCESS") # English Log
-            with open(destination_path, 'r', encoding='utf-8') as f:
-                license_content = json.load(f)
-            license_data = license_content.get('data')
-            if not license_data:
-                messagebox.showerror(self.loc.get('error_title', fallback="Error"), self.loc.get('license_invalid_format_error', fallback="Invalid license file format: missing 'data' block."))
-                return
-            threading.Thread(target=self._run_online_activation, args=(license_data,), daemon=True).start()
-        except Exception as e:
-            self.kernel.write_to_log(f"Failed to copy or read license file: {e}", "ERROR") # English Log
-            messagebox.showerror(self.loc.get('error_title', fallback="Error"), self.loc.get('license_process_error', fallback=f"Could not process the license file. Error: {e}", error=e))
-    def _run_online_activation(self, license_data):
-        self.kernel.write_to_log("Attempting online license activation...", "INFO") # English Log
-        success, message = self.kernel.activate_license_online(license_data)
+    def _run_online_activation(self, full_license_content):
+        self.kernel.write_to_log("Attempting online license activation via ApiClient...", "INFO")
+        success, message = self.api_client.activate_license(full_license_content)
         self.after(0, self._show_activation_result, success, message)
     def _show_activation_result(self, success, message):
         if success:
@@ -317,9 +344,6 @@ class MainWindow(ttk.Window):
         else:
             messagebox.showerror(self.loc.get('license_activation_failed_title', fallback="Activation Failed"), message)
     def show_permission_denied_popup(self, message: str):
-        """
-        Displays a standardized "permission denied" popup and offers to open the pricing page.
-        """
         if messagebox.askyesno(
             self.loc.get('license_popup_title', fallback="Premium Feature"),
             f"{message}\n\n{self.loc.get('permission_denied_upgrade_prompt', fallback='Would you like to view plans to upgrade?')}",

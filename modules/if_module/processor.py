@@ -35,7 +35,7 @@ class IfModule(BaseModule, IExecutable, IConfigurableUI, IDataPreviewer):
     def create_properties_ui(self, parent_frame, get_current_config, available_vars):
         property_vars = {}
         current_config = get_current_config()
-        if not available_vars or all(k in ['data', 'history'] for k in available_vars.keys()):
+        if not available_vars:
             InfoLabel(
                 parent=parent_frame,
                 text=self.loc.get("if_module_needs_connection_info", fallback="THIS MODULE NEEDS TO BE CONNECTED:\nPlease connect an input from another node to automatically detect variables.")

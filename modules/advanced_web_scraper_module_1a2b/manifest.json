@@ -1,12 +1,12 @@
 {
     "id": "advanced_web_scraper_module_1a2b",
     "name": "Advanced Web Scraper (Selenium)",
-    "version": "2.0",
+    "version": "1.2",
     "icon_file": "icon.png",
     "author": "AWENK AUDICO",
     "email": "contributor@teetah.art",
     "website": "www.teetah.art",
-    "description": "Extracts data from modern websites that use JavaScript by controlling a real browser. Now supports multi-step interactions like clicking and typing.",
+    "description": "Extracts data from modern websites that use JavaScript, by controlling a real browser. Now with caching.",
     "type": "ACTION",
     "entry_point": "processor.AdvancedWebScraperModule",
     "tier": "basic",
@@ -20,16 +20,6 @@
         "kernel"
     ],
     "properties": [
-        {
-            "id": "run_mode",
-            "type": "enum",
-            "label": "loc.prop_run_mode_label",
-            "options": [
-                "extract_full_page",
-                "perform_interaction_steps"
-            ],
-            "default": "extract_full_page"
-        },
         {
             "id": "url_source_mode",
             "type": "enum",
@@ -52,34 +42,11 @@
             "default": "data.url"
         },
         {
-            "id": "interaction_steps",
-            "type": "textarea",
-            "label": "loc.prop_interaction_steps_label",
-            "description": "Define a sequence of browser actions. Format: ACTION | SELECTOR | VALUE",
-            "default": "NAVIGATE | {{data.start_url}} | \nCLICK | css_selector=#login-button | \nTYPE | id=username | {{data.username}}\n# Available actions: NAVIGATE, CLICK, TYPE, WAIT, EXTRACT"
-        },
-        {
-            "id": "rules_source_mode",
-            "type": "enum",
-            "label": "loc.prop_extraction_rules_source_label",
-            "options": [
-                "manual",
-                "dynamic"
-            ],
-            "default": "manual"
-        },
-        {
             "id": "extraction_rules",
             "type": "textarea",
             "label": "loc.prop_extraction_rules_label",
             "description": "One rule per line. Options: [list], [text], [href], [src], etc.",
             "default": "judul_artikel: article.detail h1.detail__title [text]\nisi_artikel: article.detail .detail__body-text [text]"
-        },
-        {
-            "id": "rules_source_variable",
-            "type": "string",
-            "label": "loc.prop_rules_source_variable_label",
-            "default": "data.generated_rules"
         },
         {
             "id": "exclude_selectors",
@@ -94,12 +61,6 @@
             "label": "loc.prop_wait_time_label",
             "description": "Time to wait for the page to load completely before scraping.",
             "default": 5
-        },
-        {
-            "id": "fetch_only_html",
-            "type": "boolean",
-            "label": "loc.prop_fetch_only_html_label",
-            "default": false
         },
         {
             "id": "headless_mode",

@@ -3,7 +3,7 @@
 # EMAIL SAHIDINAOLA@GMAIL.COM
 # WEBSITE WWW.TEETAH.ART
 # File NAME : C:\FLOWORK\flowork_kernel\services\community_addon_service\community_addon_service.py
-# JUMLAH BARIS : 174
+# JUMLAH BARIS : 192
 #######################################################################
 
 import os
@@ -16,6 +16,7 @@ import json
 import uuid
 from datetime import datetime, timedelta
 from ..base_service import BaseService
+import hashlib
 class CommunityAddonService(BaseService):
     """
     Handles all interactions with the community addon repository on GitHub.
@@ -42,29 +43,36 @@ class CommunityAddonService(BaseService):
             self.logger(f"CommunityAddonService could not load core component IDs: {e}", "WARN")
         return core_ids
     def _get_user_license_key(self):
-        """
-        A helper function to safely read the license key from the local license file.
-        """
-        license_file = os.path.join(self.kernel.data_path, "license.seal")
-        if not os.path.exists(license_file):
-            return None
-        try:
-            with open(license_file, 'r', encoding='utf-8') as f:
-                license_content = json.load(f)
-            return license_content.get('data', {}).get('license_key')
-        except Exception as e:
-            self.logger(f"Could not read license key from license.seal: {e}", "WARN")
-            return None
+        if self.kernel.is_monetization_active():
+            self.logger("COMMERCIAL MODE: Reading license key from license.seal", "DEBUG")
+            license_file = os.path.join(self.kernel.data_path, "license.seal")
+            if not os.path.exists(license_file):
+                return None
+            try:
+                with open(license_file, 'r', encoding='utf-8') as f:
+                    license_content = json.load(f)
+                return license_content.get('data', {}).get('license_key')
+            except Exception as e:
+                self.logger(f"Could not read license key from license.seal: {e}", "WARN")
+                return None
+        else:
+            self.logger("OPEN-SOURCE MODE: Attempting to generate a virtual license key for upload.", "DEBUG")
+            if self.kernel.current_user:
+                user_id = self.kernel.current_user.get('user_id', 'no_id')
+                email = self.kernel.current_user.get('email', 'no_email')
+                virtual_key_source = f"flowork-opensource-{user_id}-{email}"
+                virtual_key = hashlib.sha256(virtual_key_source.encode('utf-8')).hexdigest()
+                self.logger(f"Virtual key generated for user {email}", "SUCCESS")
+                return virtual_key
+            else:
+                return None
     def upload_component(self, comp_type, component_id, description, tier):
         self.logger(f"CommunityAddonService: Starting upload for {comp_type} '{component_id}'...", "INFO")
-        if not self.kernel.is_tier_sufficient('pro'):
-            self.logger(f"Upload blocked for user with tier '{self.kernel.license_tier}'. Required: 'pro' or higher.", "WARN")
-            return False, "You must have a 'Pro' tier license or higher to upload components."
         if component_id in self.core_component_ids:
             return False, self.loc.get('api_core_component_upload_error')
         user_license_key = self._get_user_license_key()
         if not user_license_key:
-            return False, "Could not find a valid license key. Please ensure your license is active."
+            return False, "Could not find a valid license key or you are not logged in. Please ensure your license is active or you are logged into your account."
         manager_map = {
             "modules": "module_manager_service", "plugins": "module_manager_service",
             "widgets": "widget_manager_service", "triggers": "trigger_manager_service",
@@ -132,21 +140,25 @@ class CommunityAddonService(BaseService):
                 response_json = response.json()
                 self.logger(f"Heroku server response: {response_json.get('message')}", "SUCCESS")
                 return True, response_json.get('message', "Upload successful!")
+            except requests.exceptions.HTTPError as e:
+                self.logger(f"HTTP error connecting to Heroku server: {e}", "ERROR") # Log the full technical error
+                if e.response.status_code == 409:
+                    return False, f"Component with ID '{component_id}' already exists in the marketplace."
+                else:
+                    return False, f"An error occurred on the server (Code: {e.response.status_code}). Please try again later."
             except requests.exceptions.RequestException as e:
-                error_message = f"Network error connecting to Heroku server: {e}"
-                self.logger(error_message, "ERROR")
+                error_message = f"Network error connecting to upload server. Please check your internet connection."
+                self.logger(f"Full network error: {e}", "ERROR") # Log the full technical error
                 return False, error_message
             except Exception as e:
-                error_message = f"An unexpected error occurred during upload delegation: {e}"
-                self.logger(error_message, "ERROR")
+                error_message = f"An unexpected error occurred during upload delegation."
+                self.logger(f"Full unexpected error: {e}", "ERROR") # Log the full technical error
                 return False, error_message
     def upload_model(self, model_filepath: str, model_id: str, description: str, tier: str):
         self.logger(f"CommunityAddonService: Starting upload for AI model '{model_id}'...", "INFO")
-        if not self.kernel.is_tier_sufficient('pro'):
-            return False, "You must have a 'Pro' tier license or higher to upload AI models."
         user_license_key = self._get_user_license_key()
         if not user_license_key:
-            return False, "Could not find a valid license key. Please ensure your license is active."
+            return False, "Could not find a valid license key or you are not logged in. Please ensure your license is active or you are logged into your account."
         if not os.path.exists(model_filepath):
             return False, f"Model file to upload not found at: {model_filepath}"
         self.logger(f"Packaging model '{model_id}' and delegating to Heroku server...", "INFO")
@@ -165,11 +177,17 @@ class CommunityAddonService(BaseService):
             response_json = response.json()
             self.logger(f"Heroku server response for model upload: {response_json.get('message')}", "SUCCESS")
             return True, response_json.get('message', "Model upload successful!")
+        except requests.exceptions.HTTPError as e:
+            self.logger(f"HTTP error during model upload: {e}", "ERROR")
+            if e.response.status_code == 409:
+                return False, f"A model with ID '{model_id}' already exists in the marketplace."
+            else:
+                return False, f"An error occurred on the server (Code: {e.response.status_code})."
         except requests.exceptions.RequestException as e:
-            error_message = f"Network error connecting to Heroku server for model upload: {e}"
-            self.logger(error_message, "ERROR")
+            error_message = f"Network error connecting to upload server. Please check your internet connection."
+            self.logger(f"Full network error during model upload: {e}", "ERROR")
             return False, error_message
         except Exception as e:
-            error_message = f"An unexpected error occurred during model upload delegation: {e}"
-            self.logger(error_message, "ERROR")
+            error_message = f"An unexpected error occurred during model upload delegation."
+            self.logger(f"Full unexpected error during model upload: {e}", "ERROR")
             return False, error_message

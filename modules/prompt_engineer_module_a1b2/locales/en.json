@@ -1,12 +1,4 @@
 {
-    "module_prompt_engineer_name": "Prompt Engineer",
-    "module_prompt_engineer_desc": "Translates a simple command into an optimal and structured prompt for an AI.",
-    "prop_engineer_input_var_label": "Simple Command Variable:",
-    "prop_engineer_ai_model_label": "Select Engineer AI Model:",
-    "prop_engineer_persona_label": "Target AI Persona:",
-    "prop_engineer_persona_help": "Describe the role of the AI that will receive the final prompt (e.g., An expert Python programmer, a creative storyteller).",
-    "port_success": "Success",
-    "port_on_failure": "On Failure",
-    "prop_engineer_template_label": "Prompt Template:",
-    "prop_engineer_template_help": "The Agent Executor will automatically fill {{tools_string}}, {{history}}, and {{last_observation}}."
+    "module_prompt_engineer_name": "Prompt Formatter",
+    "prop_formatter_template_var_label": "Template from Variable:"
 }

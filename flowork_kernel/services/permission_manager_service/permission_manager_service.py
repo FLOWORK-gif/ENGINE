@@ -3,7 +3,7 @@
 # EMAIL SAHIDINAOLA@GMAIL.COM
 # WEBSITE WWW.TEETAH.ART
 # File NAME : C:\FLOWORK\flowork_kernel\services\permission_manager_service\permission_manager_service.py
-# JUMLAH BARIS : 97
+# JUMLAH BARIS : 69
 #######################################################################
 
 import os
@@ -12,19 +12,15 @@ import base64
 from ..base_service import BaseService
 from flowork_kernel.exceptions import PermissionDeniedError
 import hashlib
-SIMULATED_DECRYPTION_KEY = b'flowork-capability-key-for-sim-32'
-SIMULATED_PUBLIC_KEY = "flowork-simulated-public-key"
 class PermissionManagerService(BaseService):
     """
     The central gatekeeper for all capability-based permissions.
-    [REFACTORED V2] Now enters a secure fail-safe mode if rules cannot be loaded,
-    denying all premium capabilities.
-    [MODIFIED V3] Now responsible for generating the detailed permission denied message.
+    [REFACTORED V3] Now receives its rules from the LicenseManagerService at startup.
     """
     def __init__(self, kernel, service_id: str):
         super().__init__(kernel, service_id)
-        self.permission_rules = {}
-        self.is_compromised = False
+        self.permission_rules = {} # (MODIFIKASI) Starts empty
+        self.is_compromised = False # (MODIFIKASI) Will be set if rules are not loaded
         self.capability_display_map = {
             "web_scraping_advanced": "Advanced Web Scraping (Selenium)",
             "time_travel_debugger": "Time-Travel Debugger",
@@ -40,43 +36,19 @@ class PermissionManagerService(BaseService):
             "core_compiler": "Core Workflow Compiler",
             "module_generator": "Module Generator"
         }
-        self._load_and_verify_rules()
-    def _load_and_verify_rules(self):
-        """
-        Loads, verifies, and decrypts the permission rules at startup.
-        This ensures the rules are tamper-proof and not human-readable.
-        """
-        self.logger("PermissionManager: Loading and verifying capability rules...", "INFO")
-        rules_path = os.path.join(self.kernel.data_path, "permissions.bin")
-        sig_path = os.path.join(self.kernel.data_path, "permissions.sig")
-        if not os.path.exists(rules_path) or not os.path.exists(sig_path):
-            self.logger("PermissionManager: 'permissions.bin' or '.sig' not found. Entering secure mode (all premium features denied).", "CRITICAL")
-            self.is_compromised = True
-            return
-        try:
-            with open(rules_path, 'rb') as f:
-                encrypted_data = f.read()
-            with open(sig_path, 'r', encoding='utf-8') as f:
-                signature = f.read()
-            hasher = hashlib.sha256()
-            hasher.update(encrypted_data)
-            hasher.update(SIMULATED_PUBLIC_KEY.encode('utf-8'))
-            expected_signature = base64.b64encode(hasher.digest()).decode('utf-8')
-            if signature != expected_signature:
-                raise PermissionDeniedError("Permission file signature is invalid. The file may be tampered with.")
-            self.logger("PermissionManager: Rules signature verified successfully.", "SUCCESS")
-            decrypted_bytes = bytes([b ^ SIMULATED_DECRYPTION_KEY[i % len(SIMULATED_DECRYPTION_KEY)] for i, b in enumerate(encrypted_data)])
-            decrypted_json = decrypted_bytes.decode('utf-8')
-            self.permission_rules = json.loads(decrypted_json).get("capabilities", {})
-            self.logger(f"PermissionManager: Loaded {len(self.permission_rules)} capability rules successfully.", "SUCCESS")
-        except Exception as e:
-            self.logger(f"PermissionManager: CRITICAL FAILURE loading permission rules: {e}. Entering secure mode (all premium features denied).", "CRITICAL")
+    def load_rules_from_source(self, rules_dict):
+        """Loads the permission rules provided by an external source (like LicenseManager)."""
+        if rules_dict and 'capabilities' in rules_dict:
+            self.permission_rules = rules_dict['capabilities']
+            self.is_compromised = False
+            self.logger(f"PermissionManager: Loaded {len(self.permission_rules)} capability rules from source.", "SUCCESS") # English Log
+        else:
             self.permission_rules = {}
             self.is_compromised = True
+            self.logger("PermissionManager: Received empty or invalid rules. Entering secure mode.", "CRITICAL") # English Log
     def check_permission(self, capability: str, is_system_call: bool = False) -> bool:
         """
         Checks if the current user has the required tier for a specific capability.
-        (MODIFIED) Now raises a detailed PermissionDeniedError on failure.
         """
         if is_system_call:
             return True
@@ -91,7 +63,7 @@ class PermissionManagerService(BaseService):
             capability_name = self.capability_display_map.get(capability, capability.replace('_', ' ').title())
             error_msg = self.loc.get('permission_denied_detailed',
                                      fallback="Access Denied. The '{capability}' feature requires a '{required_tier}' license, but your current tier is '{user_tier}'.",
-                                     capability=capability_name, # FIXED: Changed 'capability_name' to 'capability' to match the JSON file and prevent errors.
+                                     capability=capability_name,
                                      required_tier=required_tier.capitalize(),
                                      user_tier=user_tier.capitalize())
             raise PermissionDeniedError(error_msg)

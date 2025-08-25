@@ -1,43 +1,43 @@
 {
-    "id": "manual_approval_module",
-    "name": "Persetujuan Manual",
-    "icon_file": "icon.png",
-    "author": "Flowork Contributor",
-    "email": "Contributor@teetah.art",
-    "website": "www.teetah.art",
-    "description": "Menjeda alur kerja dan menampilkan pesan popup kepada pengguna untuk interaksi.",
-    "type": "ACTION",
-    "entry_point": "processor.ManualApprovalModule",
-    "requires_input": true,
-    "properties": [
-        {
-            "id": "approval_message",
-            "type": "string",
-            "label": "Pesan Persetujuan",
-            "default": "Apakah Anda yakin ingin melanjutkan proses ini?",
-            "description": "Teks yang akan ditampilkan di dalam popup persetujuan."
-        }
-    ],
-    "output_ports": [
-        {
-            "name": "APPROVED",
-            "display_name": "Disetujui"
-        },
-        {
-            "name": "REJECTED",
-            "display_name": "Ditolak"
-        }
-    ],
-    "requires_services": [
-        "logger",
-        "kernel",
-        "loc"
-    ],
-    "permissions": [
-        "ui_interaction"
-    ],
-    "display_properties": {
-        "color": "#8E44AD",
-        "text_color": "#FFFFFF"
-    }
+"id": "manual_approval_module",
+"name": "Manual Approval",
+"icon_file": "icon.GIF",
+"author": "Flowork Contributor",
+"email": "Contributor@teetah.art",
+"website": "www.teetah.art",
+"description": "Pauses the workflow and displays a popup message for user interaction.",
+"type": "ACTION",
+"entry_point": "processor.ManualApprovalModule",
+"requires_input": true,
+"properties": [
+{
+"id": "approval_message",
+"type": "string",
+"label": "Approval Message",
+"default": "Are you sure you want to continue with this process?",
+"description": "Text to display in the approval popup."
+}
+],
+"output_ports": [
+{
+"name": "APPROVED",
+"display_name": "APPROVED"
+},
+{
+"name": "REJECTED",
+"display_name": "REJECTED"
+}
+],
+"requires_services": [
+"logger",
+"kernel",
+"loc"
+],
+"permissions": [
+"ui_interaction"
+],
+"display_properties": {
+"color": "#8E44AD",
+"text_color": "#FFFFFF"
+}
 }

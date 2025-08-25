@@ -3,7 +3,7 @@
 # EMAIL SAHIDINAOLA@GMAIL.COM
 # WEBSITE WWW.TEETAH.ART
 # File NAME : C:\FLOWORK\modules\image_viewer_module\processor.py
-# JUMLAH BARIS : 108
+# JUMLAH BARIS : 122
 #######################################################################
 
 import ttkbootstrap as ttk
@@ -22,23 +22,37 @@ class ImageViewerModule(BaseModule, IExecutable, IConfigurableUI, IDataPreviewer
     """
     Displays an image in a popup window from a local file path.
     The path can be provided dynamically from the payload or set manually.
+    (MODIFIED) Now manages a single popup instance to prevent stacking.
     """
     TIER = "free"
+    _active_popup = None
     def __init__(self, module_id, services):
         super().__init__(module_id, services)
         if not PIL_AVAILABLE:
             self.logger("FATAL: Pillow library is not installed. Image Viewer module will not work.", "CRITICAL") # English Log
     def _show_image_on_ui_thread(self, image_path):
         """
-        This function creates and displays the Toplevel window with the image.
-        It must be called on the main UI thread via ui_callback.
+        (MODIFIED) This function now creates, manages, and tracks the single popup instance.
         """
         try:
+            if ImageViewerModule._active_popup and ImageViewerModule._active_popup.winfo_exists():
+                ImageViewerModule._active_popup.destroy()
+                self.logger("An existing image viewer popup was found and automatically closed.", "INFO")
             popup = ttk.Toplevel(title=f"Image Viewer - {os.path.basename(image_path)}")
             img = Image.open(image_path)
+            max_width = self.kernel.root.winfo_screenwidth() * 0.8
+            max_height = self.kernel.root.winfo_screenheight() * 0.8
+            if img.width > max_width or img.height > max_height:
+                img.thumbnail((max_width, max_height), Image.Resampling.LANCZOS)
             popup.photo = ImageTk.PhotoImage(img)
             img_label = ttk.Label(popup, image=popup.photo)
             img_label.pack(padx=10, pady=10)
+            ImageViewerModule._active_popup = popup
+            def _on_popup_close():
+                self.logger("Image viewer was closed manually by the user.", "DEBUG")
+                ImageViewerModule._active_popup = None # Forget the popup
+                popup.destroy()
+            popup.protocol("WM_DELETE_WINDOW", _on_popup_close)
             popup.transient()
             popup.grab_set()
             popup.wait_window()

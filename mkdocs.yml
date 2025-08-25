@@ -11,6 +11,7 @@ theme:
   language: en
   features:
     - navigation.tabs
+    - navigation.sections
     - content.code.copy
     - search.suggest
   palette:
@@ -24,77 +25,63 @@ extra:
       link: ./id/
       lang: id
     - name: English
-      link: ./
+      link: ./en/
       lang: en
 
 nav:
   - Home: index.md
-  - Modules:
-    - 'AI Center': modules/ai_center_module.md
-    - 'Advanced Web Scraper (Selenium)': modules/advanced_web_scraper_module_1a2b.md
-    - 'Audio Source': modules/audio_source_module.md
-    - 'Copy File / Folder': modules/copy_file_module.md
-    - 'Core Compiler': modules/core_compiler_module.md
-    - 'Data Parser': modules/data_parser_module.md
-    - 'Data Receiver': modules/receiver_module.md
-    - 'Data Sender': modules/sender_module.md
-    - 'Decode Base64 Text': modules/decode_base64_text_1998.md
-    - 'Delay (Sleep)': modules/sleep_module.md
-    - 'Delete File / Folder': modules/delete_item_module.md
-    - 'Dictionary Upsert': modules/dictionary_upsert_1998.md
-    - 'Dynamic Node Generator': modules/dynamic_generator_module.md
-    - 'Encode Base64 Text': modules/encode_base64_text_1998.md
-    - 'Fail Always': modules/fail_always_plugin.md
-    - 'File System: Basic Actions': modules/file_system_actions_module.md
-    - 'File System: List Items': modules/file_system_list_module.md
-    - 'File: JSON Handler': modules/json_file_handler_module.md
-    - 'IF Condition': modules/if_module.md
-    - 'Image Viewer': modules/image_viewer_module.md
-    - 'Join': modules/join_module.md
-    - 'Keyword Router': modules/rule_router_module.md
-    - 'Keyword Router (Manual)': modules/keyword_router_module.md
-    - 'Media Merger': modules/media_merger_module.md
-    - 'Nuitka Compiler (.py to .pyd)': modules/nuitka_compiler_module_b4a1.md
-    - 'Persetujuan Manual': modules/manual_approval_module.md
-    - 'Prompt Engineer': modules/prompt_engineer_module_a1b2.md
-    - 'Prompt Receiver': modules/prompt_receiver_module.md
-    - 'Read File': modules/read_file_module.md
-    - 'Run Python Code (Nano)': modules/function_runner_module.md
-    - 'Send Email (SMTP)': modules/email_sender_module.md
-    - 'Sentiment Analysis': modules/sentiment_analysis_module.md
-    - 'Set Variables / START': modules/set_variable_module.md
-    - 'Smart Create Folder': modules/create_folder_module.md
-    - 'Source Path Source': modules/move_file_module.md
-    - 'Stable Diffusion XL Image Generator': modules/stable_diffusion_xl_module.md
-    - 'Stable Video Diffusion Generator': modules/stable_video_diffusion_module_c4d3.md
-    - 'Sub-Workflow Configuration': modules/sub_workflow_module.md
-    - 'Subtitle Composer': modules/subtitle_composer_module.md
-    - 'Switch Case': modules/switch_module.md
-    - 'Tampilkan Output (Popup)': modules/debug_popup_module.md
-    - 'Text Formatter': modules/text_formatter_module.md
-    - 'Text to Speech (TTS)': modules/text_to_speech_module.md
-    - 'Universal Code Runner': modules/code_runner_module.md
-    - 'Video Merger': modules/video_merger_module.md
-  - Plugins:
-    - 'Flowork Core UI': plugins/flowork_core_ui.md
-    - 'Metrics Logger Service': plugins/metrics_logger_plugin.md
-    - 'Plugin Dashboard Metrik': plugins/metrics_dashboard.md
-    - 'Publish Event': plugins/publish_event_module.md
-    - 'System Diagnostics': plugins/system_diagnostics_plugin.md
-  - Widgets:
-    - 'Dataset Manager': widgets/dataset_manager_widget.md
-    - 'Kanvas Alur Kerja': widgets/canvas_area.md
-    - 'Kanvas Data (Data Canvas)': widgets/data_canvas_widget.md
-    - 'Log Eksekusi': widgets/log_viewer_widget.md
-    - 'Prompt Sender': widgets/prompt_sender_widget.md
-    - 'Toolbox Logika': widgets/logic_toolbox_widget.md
-    - 'Toolbox Plugin': widgets/plugin_toolbox_widget.md
-    - 'Toolbox Widget': widgets/widget_toolbox.md
-  - Triggers:
-    - 'Pemicu Event Bus Internal': triggers/event_bus_trigger.md
-    - 'Pemicu Perubahan File': triggers/file_system_trigger.md
-    - 'Pemicu Proses Aplikasi': triggers/process_trigger.md
-    - 'Pemicu Waktu (Cron)': triggers/cron_trigger.md
+  - API Guides:
+    - Introduction: guides/introduction.md
+    - Getting Started: guides/getting-started.md
+    - Authentication: guides/authentication.md
+    - Practical Scenarios: guides/scenarios.md
+    - Best Practices: guides/best-practices.md
+  - Component Reference:
+    - Introduction: reference/index.md
+    - Modules:
+      - 'AI Center': reference/modules/ai_center_module.md
+      - 'Advanced Web Scraper (Selenium)': reference/modules/advanced_web_scraper_module_1a2b.md
+      - 'Agent Host': reference/modules/agent_host_module.md
+      - 'Agentic Web Scraper': reference/modules/intelligent_content_extractor.md
+      - 'Decode Base64 Text': reference/modules/decode_base64_text_1998.md
+      - 'Email Reader (IMAP)': reference/modules/email_reader_module.md
+      - 'Email Sender': reference/modules/email_sender_module_b5c6.md
+      - 'Encode Base64 Text': reference/modules/encode_base64_text_1998.md
+      - 'Fail Always': reference/modules/fail_always_plugin.md
+      - 'IF Condition': reference/modules/if_module.md
+      - 'Image Viewer': reference/modules/image_viewer_module.md
+      - 'Manual Approval': reference/modules/manual_approval_module.md
+      - 'Prompt Engineer': reference/modules/prompt_engineer_module_a1b2.md
+      - 'Prompt Receiver': reference/modules/prompt_receiver_module.md
+      - 'Set Variables / START': reference/modules/set_variable_module.md
+      - 'Spreadsheet (Excel) Manager': reference/modules/excel_manager_module.md
+      - 'Stable Diffusion XL Image Generator': reference/modules/stable_diffusion_xl_module.md
+      - 'Tampilkan Output (Popup)': reference/modules/debug_popup_module.md
+      - 'Text to JSON Converter': reference/modules/text_to_json_converter_module.md
+    - Plugins:
+      - 'AI Brain Provider': reference/plugins/brain_provider_plugin.md
+      - 'Article Generator Tools': reference/plugins/article_generator_tools.md
+      - 'Email Sender Tools': reference/plugins/email_sender_tools.md
+      - 'Flowork Core UI': reference/plugins/flowork_core_ui.md
+      - 'Image Generator Tools': reference/plugins/image_generator_tools.md
+      - 'Metrics Logger Service': reference/plugins/metrics_logger_plugin.md
+      - 'Plugin Dashboard Metrik': reference/plugins/metrics_dashboard.md
+      - 'Prompt Template': reference/plugins/prompt_template_plugin.md
+      - 'System Diagnostics': reference/plugins/system_diagnostics_plugin.md
+    - Widgets:
+      - 'Dataset Manager': reference/widgets/dataset_manager_widget.md
+      - 'Kanvas Alur Kerja': reference/widgets/canvas_area.md
+      - 'Kanvas Data (Data Canvas)': reference/widgets/data_canvas_widget.md
+      - 'Log Eksekusi': reference/widgets/log_viewer_widget.md
+      - 'Prompt Sender': reference/widgets/prompt_sender_widget.md
+      - 'Toolbox Logika': reference/widgets/logic_toolbox_widget.md
+      - 'Toolbox Plugin': reference/widgets/plugin_toolbox_widget.md
+      - 'Toolbox Widget': reference/widgets/widget_toolbox.md
+    - Triggers:
+      - 'Application Process Trigger': reference/triggers/process_trigger.md
+      - 'File System Trigger': reference/triggers/file_system_trigger.md
+      - 'Internal Event Bus Trigger': reference/triggers/event_bus_trigger.md
+      - 'Time Trigger (Cron)': reference/triggers/cron_trigger.md
 
 plugins:
   - search
@@ -102,8 +89,10 @@ plugins:
       handlers:
         python:
           options:
-            paths: [.]
             show_source: false
             docstring_style: google
             show_root_heading: true
             members_order: source
+            # [PERBAIKAN] Memindahkan 'paths' ke dalam 'extra' untuk mengikuti standar baru
+            extra:
+              paths: [., modules, plugins, widgets, triggers, ai_providers]

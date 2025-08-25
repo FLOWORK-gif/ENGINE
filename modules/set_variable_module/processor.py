@@ -3,7 +3,7 @@
 # EMAIL SAHIDINAOLA@GMAIL.COM
 # WEBSITE WWW.TEETAH.ART
 # File NAME : C:\FLOWORK\modules\set_variable_module\processor.py
-# JUMLAH BARIS : 149
+# JUMLAH BARIS : 150
 #######################################################################
 
 from flowork_kernel.api_contract import BaseModule, IExecutable, IConfigurableUI, IDataPreviewer
@@ -43,7 +43,7 @@ class SetVariableModule(BaseModule, IExecutable, IConfigurableUI, IDataPreviewer
         status_updater("Variables set successfully.", "SUCCESS")
         if mode == 'EXECUTE' and hasattr(self, 'event_bus'):
             self.publish_event("START_NODE_EXECUTED", output_data)
-        return payload
+        return {"payload": payload, "output_name": "success"}
     def get_dynamic_output_schema(self, config):
         schema = []
         variables = config.get('variables', [])
@@ -131,6 +131,7 @@ class SetVariableModule(BaseModule, IExecutable, IConfigurableUI, IDataPreviewer
             def get(self):
                 vars_list = []
                 for row in variable_rows:
+                    if not row['frame'].winfo_exists(): continue
                     name = row['name'].get().strip()
                     var_type = row['type'].get()
                     value = ""

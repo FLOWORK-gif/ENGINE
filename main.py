@@ -101,7 +101,7 @@ if __name__ == "__main__":
         help='Forces the API server to start, overriding the setting in settings.json. The app will run in the background.'
     )
     args = parser.parse_args()
-    project_root_path = os.path.dirname(os.path.abspath(__file__)) # This is okay to keep here
+    project_root_path = os.path.dirname(os.path.abspath(__file__))
     sys.meta_path.insert(1, TeetahFinder(project_root_path))
     try:
         from flowork_kernel.kernel import Kernel

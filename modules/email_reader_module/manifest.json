@@ -3,7 +3,7 @@
     "name": "Email Reader (IMAP)",
     "version": "1.1",
     "icon_file": "icon.png",
-    "author": "AWENK AUDICO & Gemini",
+    "author": "AWENK AUDICO",
     "email": "contributor@teetah.art",
     "website": "www.teetah.art",
     "description": "Connects to an IMAP email server to find and read emails, and extract specific information like verification links or codes.",

@@ -301,7 +301,7 @@ class NodeManager:
             header.pack(side="top", fill="x")
             main_label = ttk.Label(header, text="Agent Host", font=("Arial", 12, "bold"), style='AgentHeader.TLabel')
             main_label.pack(pady=5)
-            status_text = scrolledtext.ScrolledText(node_frame, height=2, wrap="word", relief="sunken", borderwidth=1, background="#4d2424", foreground="#E0E0E0", font=("Consolas", 8), state="disabled")
+            status_text = scrolledtext.ScrolledText(node_frame, height=2, wrap="word", relief="sunken", borderwidth=1, background="#4d2424", foreground="#E0E0E0", font=("Consolas", 8), state="disabled", name=f"agent_status_text_{node_id}")
             status_text.pack(fill='x', expand=True, padx=30, pady=5)
             icon_size = (24, 24)
             tool_ports_config = {'prompt_port': 'icon_prompt.png', 'brain_port': 'icon_brain.png', 'tools_port': 'icon_tools.png'}

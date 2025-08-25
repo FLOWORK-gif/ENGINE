@@ -3,7 +3,7 @@
 # EMAIL SAHIDINAOLA@GMAIL.COM
 # WEBSITE WWW.TEETAH.ART
 # File NAME : C:\FLOWORK\flowork_kernel\services\api_server_service\routes\system_routes.py
-# JUMLAH BARIS : 57
+# JUMLAH BARIS : 72
 #######################################################################
 
 from .base_api_route import BaseApiRoute
@@ -17,6 +17,7 @@ class SystemRoutes(BaseApiRoute):
             "POST /api/v1/addons/upload": self.handle_addon_upload,
             "POST /api/v1/system/actions/hot_reload": self.handle_hot_reload,
             "GET /api/v1/status": self.handle_get_status,
+            "POST /api/v1/system/actions/restart": self.handle_restart, # <<< MODIFIKASI: Tambahkan rute baru
         }
     def handle_get_status(self, handler):
         """
@@ -56,3 +57,17 @@ class SystemRoutes(BaseApiRoute):
         except Exception as e:
             self.logger(f"Hot reload via API failed: {e}", "CRITICAL")
             handler._send_response(500, {"error": f"Internal server error during hot reload: {e}"})
+    def handle_restart(self, handler):
+        """
+        Handles the API request to trigger a restart event.
+        """
+        try:
+            event_bus = self.kernel.get_service("event_bus")
+            if event_bus:
+                self.kernel.root.after(100, lambda: event_bus.publish("RESTART_APP", {}))
+                handler._send_response(202, {"status": "accepted", "message": "Restart signal sent to the application."})
+            else:
+                handler._send_response(503, {"error": "EventBus service is not available to process the restart signal."})
+        except Exception as e:
+            self.logger(f"Restart via API failed: {e}", "CRITICAL")
+            handler._send_response(500, {"error": f"Internal server error during restart signal: {e}"})

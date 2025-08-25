@@ -9,7 +9,7 @@
     "description": "An intelligent router to delegate prompts to the appropriate AI Provider or local model based on the task type.",
     "type": "ACTION",
     "entry_point": "processor.AICenterModule",
-    "tier": "free",
+    "tier": "pro",
     "behaviors": [
         "retry",
         "loop"

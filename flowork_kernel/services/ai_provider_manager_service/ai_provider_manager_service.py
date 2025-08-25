@@ -3,7 +3,7 @@
 # EMAIL SAHIDINAOLA@GMAIL.COM
 # WEBSITE WWW.TEETAH.ART
 # File NAME : C:\FLOWORK\flowork_kernel\services\ai_provider_manager_service\ai_provider_manager_service.py
-# JUMLAH BARIS : 291
+# JUMLAH BARIS : 304
 #######################################################################
 
 import os
@@ -45,7 +45,7 @@ class AIProviderManagerService(BaseService):
         self.image_output_dir = os.path.join(self.kernel.data_path, "generated_images_by_service") # (ADDED) Central output dir for service-generated images
         os.makedirs(self.image_output_dir, exist_ok=True)
         self.discover_and_load_endpoints()
-    def query_ai_by_task(self, task_type: str, prompt: str, endpoint_id: str = None) -> dict:
+    def query_ai_by_task(self, task_type: str, prompt: str, endpoint_id: str = None, **kwargs) -> dict:
         if endpoint_id:
             target_endpoint_id = endpoint_id
             self.kernel.write_to_log(f"AI Query by Task: Using specified endpoint '{target_endpoint_id}' for task '{task_type}'", "DEBUG") # English Log
@@ -60,7 +60,7 @@ class AIProviderManagerService(BaseService):
             if provider:
                 is_ready, msg = provider.is_ready()
                 if is_ready:
-                    return provider.generate_response(prompt)
+                    return provider.generate_response(prompt, **kwargs)
                 else:
                     return {"error": f"Provider '{target_endpoint_id}' for task '{task_type}' is not ready: {msg}"}
             else:
@@ -91,46 +91,59 @@ class AIProviderManagerService(BaseService):
                     self.kernel.write_to_log(f"Error calling local GGUF worker: {e}", "CRITICAL") # English Log
                     return {"error": str(e)}
             elif model_type == 'hf_image_single_file':
-                if not DIFFUSERS_AVAILABLE:
-                    return {"error": "Libraries 'diffusers', 'torch', 'Pillow' are required for local image generation."}
-                model_folder_name = model_info.get('name')
-                try:
-                    pipeline = self.hf_pipelines.get(model_folder_name)
-                    if not pipeline:
-                        self.kernel.write_to_log(f"Loading HF pipeline for '{model_folder_name}' for the first time...", "INFO") # English Log
-                        model_path = model_info.get('full_path')
-                        device = "cuda" if torch.cuda.is_available() else "cpu"
-                        torch_dtype = torch.float16 if device == "cuda" else torch.float32
-                        safetensor_files = [f for f in os.listdir(model_path) if f.endswith(".safetensors")]
-                        if not safetensor_files:
-                            raise FileNotFoundError(f"No .safetensors file found in '{model_path}'")
-                        full_model_path = os.path.join(model_path, safetensor_files[0])
-                        vae = AutoencoderKL.from_pretrained("stabilityai/sd-vae-ft-mse", torch_dtype=torch_dtype).to(device)
-                        pipeline = StableDiffusionXLPipeline.from_single_file(
-                            full_model_path,
-                            vae=vae, # Pass the VAE here
-                            torch_dtype=torch_dtype,
-                            variant="fp16" if device == "cuda" else "fp32"
-                        ).to(device)
-                        if device == "cuda":
-                            pipeline.enable_model_cpu_offload()
-                        self.hf_pipelines[model_folder_name] = pipeline
-                    self.kernel.write_to_log(f"Generating image with '{model_folder_name}'...", "INFO") # English Log
-                    image = pipeline(prompt=prompt).images[0]
-                    sanitized_prefix = sanitize_filename(prompt[:25])
-                    timestamp = time.strftime("%Y%m%d_%H%M%S")
-                    filename = f"{sanitized_prefix}_{timestamp}.png"
-                    output_path = os.path.join(self.image_output_dir, filename)
-                    image.save(output_path)
-                    self.kernel.write_to_log(f"Image saved to: {output_path}", "SUCCESS") # English Log
-                    return {"type": "image", "data": output_path}
-                except Exception as e:
-                    self.kernel.write_to_log(f"Error during local image generation: {e}", "CRITICAL") # English Log
-                    return {"error": str(e)}
+                return self._run_single_file_image_model(model_info, prompt, **kwargs)
             else:
                 return {"error": f"Unsupported local model type '{model_type}' for endpoint '{target_endpoint_id}'."}
         else:
             return {"error": f"Unsupported or unknown AI endpoint type for task '{task_type}': {target_endpoint_id}"}
+    def _run_single_file_image_model(self, model_info, prompt, **kwargs):
+        if not DIFFUSERS_AVAILABLE:
+            return {"error": "Libraries 'diffusers', 'torch', 'Pillow' are required."}
+        model_folder_name = model_info.get('name')
+        try:
+            pipeline = self.hf_pipelines.get(model_folder_name)
+            if not pipeline:
+                self.kernel.write_to_log(f"Loading HF pipeline for '{model_folder_name}' for the first time...", "INFO")
+                model_path = model_info.get('full_path')
+                device = "cuda" if torch.cuda.is_available() else "cpu"
+                torch_dtype = torch.float16 if device == "cuda" else torch.float32
+                vae_path = os.path.join(self.kernel.project_root_path, "ai_models", "vae", "sdxl-vae-fp16-fix")
+                if not os.path.isdir(vae_path):
+                     raise FileNotFoundError("VAE folder 'sdxl-vae-fp16-fix' not found in 'ai_models/vae'. This is crucial for quality.")
+                vae = AutoencoderKL.from_pretrained(vae_path, torch_dtype=torch_dtype).to(device)
+                safetensor_files = [f for f in os.listdir(model_path) if f.endswith(".safetensors")]
+                if not safetensor_files:
+                    raise FileNotFoundError(f"No .safetensors file found in '{model_path}'")
+                full_model_path = os.path.join(model_path, safetensor_files[0])
+                pipeline = StableDiffusionXLPipeline.from_single_file(
+                    full_model_path,
+                    vae=vae,
+                    torch_dtype=torch_dtype,
+                    variant="fp16" if device == "cuda" else "fp32"
+                ).to(device)
+                if device == "cuda":
+                    pipeline.enable_model_cpu_offload()
+                self.hf_pipelines[model_folder_name] = pipeline
+            self.kernel.write_to_log(f"Generating image with '{model_folder_name}'...", "INFO")
+            generation_params = {
+                "prompt": prompt,
+                "negative_prompt": kwargs.get('negative_prompt', 'blurry, worst quality, low quality'),
+                "width": int(kwargs.get('width', 1024)),
+                "height": int(kwargs.get('height', 1024)),
+                "guidance_scale": float(kwargs.get('guidance_scale', 7.5)),
+                "num_inference_steps": int(kwargs.get('num_inference_steps', 30))
+            }
+            image = pipeline(**generation_params).images[0]
+            sanitized_prefix = sanitize_filename(prompt[:25])
+            timestamp = time.strftime("%Y%m%d_%H%M%S")
+            filename = f"{sanitized_prefix}_{timestamp}.png"
+            output_path = os.path.join(self.image_output_dir, filename)
+            image.save(output_path)
+            self.kernel.write_to_log(f"Image saved to: {output_path}", "SUCCESS")
+            return {"type": "image", "data": output_path}
+        except Exception as e:
+            self.kernel.write_to_log(f"Error during local image generation: {e}\n{traceback.format_exc()}", "CRITICAL")
+            return {"error": str(e)}
     def _install_dependencies(self, provider_dir, provider_name):
         requirements_path = os.path.join(provider_dir, 'requirements.txt')
         if not os.path.exists(requirements_path):

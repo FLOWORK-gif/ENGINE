@@ -3,7 +3,7 @@
 # EMAIL SAHIDINAOLA@GMAIL.COM
 # WEBSITE WWW.TEETAH.ART
 # File NAME : C:\FLOWORK\plugins\flowork_core_ui\settings_tab.py
-# JUMLAH BARIS : 120
+# JUMLAH BARIS : 131
 #######################################################################
 
 import ttkbootstrap as ttk
@@ -41,6 +41,14 @@ class SettingsTab(ttk.Frame):
         self._build_ui()
         self._load_all_settings_from_api()
         self._content_initialized = True
+    def refresh_content(self):
+        """Refreshes the content and state of all child setting frames."""
+        self.kernel.write_to_log("SettingsTab: Refreshing content.", "DEBUG")
+        for frame in self.all_settings_frames:
+            if hasattr(frame, 'refresh_content'):
+                frame.refresh_content()
+        if hasattr(self, 'variable_manager_frame'):
+            self.variable_manager_frame.load_variables_to_ui()
     def _build_ui(self):
         paned_window = ttk.PanedWindow(self, orient='horizontal')
         paned_window.pack(fill='both', expand=True)
@@ -66,9 +74,13 @@ class SettingsTab(ttk.Frame):
         self.notification_frame = NotificationSettingsFrame(parent_frame, self.kernel)
         self.notification_frame.pack(fill="x", pady=5, padx=5)
         self.all_settings_frames.append(self.notification_frame)
+        license_manager = self.kernel.get_service("license_manager_service")
         self.license_frame = LicenseManagementFrame(parent_frame, self.kernel)
-        self.license_frame.pack(fill="x", pady=5, padx=5)
         self.all_settings_frames.append(self.license_frame)
+        if license_manager and license_manager.remote_permission_rules and license_manager.remote_permission_rules.get("monetization_active"):
+            self.license_frame.pack(fill="x", pady=5, padx=5)
+        else:
+            pass
         self.error_handler_frame = ErrorHandlerFrame(parent_frame, self.kernel)
         self.error_handler_frame.pack(fill="x", pady=5, padx=5, expand=True, anchor="n")
         self.all_settings_frames.append(self.error_handler_frame)
@@ -87,7 +99,6 @@ class SettingsTab(ttk.Frame):
             for frame in self.all_settings_frames:
                 try:
                     if hasattr(frame, 'load_settings_data'):
-                        frame.pack(fill="x", pady=5, padx=5, expand=True, anchor="n")
                         frame.load_settings_data(settings_data)
                 except PermissionDeniedError:
                     self.kernel.write_to_log(f"Hiding settings frame '{frame.__class__.__name__}' due to insufficient permissions.", "WARN")

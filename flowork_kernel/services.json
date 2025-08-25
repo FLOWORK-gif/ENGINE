@@ -41,6 +41,11 @@
             "class": "StartupService"
         },
         {
+            "id": "documentation_service",
+            "path": "flowork_kernel.services.documentation_service.documentation_service",
+            "class": "DocumentationService"
+        },
+        {
             "id": "community_addon_service",
             "path": "flowork_kernel.services.community_addon_service.community_addon_service",
             "class": "CommunityAddonService"

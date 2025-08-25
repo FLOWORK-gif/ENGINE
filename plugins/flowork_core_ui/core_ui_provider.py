@@ -3,7 +3,7 @@
 # EMAIL SAHIDINAOLA@GMAIL.COM
 # WEBSITE WWW.TEETAH.ART
 # File NAME : C:\FLOWORK\plugins\flowork_core_ui\core_ui_provider.py
-# JUMLAH BARIS : 137
+# JUMLAH BARIS : 155
 #######################################################################
 
 from flowork_kernel.api_contract import BaseModule, BaseUIProvider
@@ -33,7 +33,7 @@ class CoreUIProvider(BaseModule, BaseUIProvider):
         """
         if hasattr(self, 'logger') and callable(self.logger):
             self.logger("CoreUIProvider: Kernel is requesting the list of pages I provide.", "DEBUG")
-        return [
+        all_pages = [
             {
                 "key": "settings",
                 "title": self.loc.get('settings_tab_title', fallback="Settings"),
@@ -90,12 +90,21 @@ class CoreUIProvider(BaseModule, BaseUIProvider):
                 "frame_class": PricingPage
             }
         ]
+        license_manager = self.kernel.get_service("license_manager_service") # (FIXED) Using self.kernel.get_service
+        monetization_is_active = license_manager and license_manager.remote_permission_rules and license_manager.remote_permission_rules.get("monetization_active")
+        final_pages_to_show = []
+        for page in all_pages:
+            if page['key'] == 'pricing_page' and not monetization_is_active:
+                self.logger(f"UI: Monetization is inactive, hiding page: {page['key']}", "DEBUG")
+                continue # Skip adding this page to the final list.
+            final_pages_to_show.append(page)
+        return final_pages_to_show
     def get_menu_items(self):
         """
         Adds menu items for all managed pages.
         """
         tab_manager = self.kernel.get_service("tab_manager_service")
-        return [
+        all_items = [
             {
                 "parent": self.loc.get('menu_ai_tools', fallback="AI Tools"),
                 "add_separator": True,
@@ -136,3 +145,12 @@ class CoreUIProvider(BaseModule, BaseUIProvider):
                 "command": lambda: tab_manager.open_managed_tab('pricing_page')
             }
         ]
+        license_manager = self.kernel.get_service("license_manager_service") # (FIXED) Using self.kernel.get_service
+        monetization_is_active = license_manager and license_manager.remote_permission_rules and license_manager.remote_permission_rules.get("monetization_active")
+        final_items_to_show = []
+        for item in all_items:
+            if item['label'] == self.loc.get('menu_open_pricing_page', fallback="View Plans & Upgrade") and not monetization_is_active:
+                self.logger(f"UI: Monetization is inactive, hiding menu item: {item['label']}", "DEBUG")
+                continue # Skip this commercial item.
+            final_items_to_show.append(item)
+        return final_items_to_show

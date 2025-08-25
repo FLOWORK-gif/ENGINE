@@ -3,7 +3,7 @@
 # EMAIL SAHIDINAOLA@GMAIL.COM
 # WEBSITE WWW.TEETAH.ART
 # File NAME : C:\FLOWORK\plugins\flowork_core_ui\marketplace_page.py
-# JUMLAH BARIS : 486
+# JUMLAH BARIS : 496
 #######################################################################
 
 import ttkbootstrap as ttk
@@ -33,7 +33,8 @@ class MarketplacePage(ttk.Frame):
         self._fetch_all_data_and_refresh()
         event_bus = self.kernel.get_service("event_bus")
         if event_bus:
-            event_bus.subscribe("COMPONENT_LIST_CHANGED", f"marketplace_page_{id(self)}", self.refresh_content)
+            subscriber_id = f"marketplace_page_{id(self)}"
+            event_bus.subscribe("COMPONENT_LIST_CHANGED", subscriber_id, self.refresh_content)
     def _build_ui(self):
         main_frame = ttk.Frame(self, padding=15)
         main_frame.pack(fill='both', expand=True)
@@ -69,6 +70,11 @@ class MarketplacePage(ttk.Frame):
         self._create_component_notebook(local_tab, self.local_component_trees)
         self._create_component_notebook(community_tab, self.community_component_trees)
         self.ui_ready = True
+    def refresh_content(self, event_data=None):
+        self.kernel.write_to_log("MarketplacePage received a signal to refresh its content.", "INFO")
+        self._fetch_all_data_and_refresh()
+    def _fetch_all_data_and_refresh(self):
+        threading.Thread(target=self._fetch_all_data_worker, daemon=True).start()
     def _create_component_notebook(self, parent_tab, tree_dict):
         notebook = ttk.Notebook(parent_tab)
         notebook.pack(fill='both', expand=True)
@@ -79,19 +85,28 @@ class MarketplacePage(ttk.Frame):
             "presets": self.loc.get('marketplace_tab_presets', fallback="Presets"),
             "triggers": "Triggers",
             "ai_providers": "AI Providers",
-            "ai_models": "AI Models" # (COMMENT) No change here
+            "ai_models": "AI Models"
         }
+        is_monet_active = self.kernel.is_monetization_active() # (PENAMBAHAN) Cek status monetisasi sekali saja
         for comp_type, tab_title in component_types.items():
             tab = ttk.Frame(notebook, padding=5)
             notebook.add(tab, text=tab_title)
+            columns = ["name", "description"]
+            if is_monet_active:
+                columns.append("tier")
             if comp_type == 'ai_models':
-                columns = ("name", "description", "tier", "downloads", "status")
+                columns.append("downloads")
             else:
-                columns = ("name", "description", "tier", "version", "status")
-            tree = ttk.Treeview(tab, columns=columns, show="headings")
+                columns.append("version")
+            columns.append("status")
+            tree = ttk.Treeview(tab, columns=tuple(columns), show="headings")
             tree.heading("name", text=self.loc.get('marketplace_col_name', fallback="Addon Name"))
+            tree.column("name", width=250)
             tree.heading("description", text=self.loc.get('marketplace_col_desc', fallback="Description"))
-            tree.heading("tier", text=self.loc.get('marketplace_col_tier', fallback="Tier"))
+            tree.column("description", width=400)
+            if is_monet_active:
+                tree.heading("tier", text=self.loc.get('marketplace_col_tier', fallback="Tier"))
+                tree.column("tier", width=80, anchor='center')
             if comp_type == 'ai_models':
                 tree.heading("downloads", text=self.loc.get('marketplace_col_downloads', fallback="Downloads"))
                 tree.column("downloads", width=80, anchor='center')
@@ -99,9 +114,6 @@ class MarketplacePage(ttk.Frame):
                 tree.heading("version", text=self.loc.get('marketplace_col_version', fallback="Version"))
                 tree.column("version", width=80, anchor='center')
             tree.heading("status", text=self.loc.get('marketplace_col_status', fallback="Status"))
-            tree.column("name", width=250)
-            tree.column("description", width=400)
-            tree.column("tier", width=80, anchor='center')
             tree.column("status", width=100, anchor='center')
             tree.pack(fill='both', expand=True)
             tree.bind('<<TreeviewSelect>>', self._update_button_state)
@@ -127,9 +139,6 @@ class MarketplacePage(ttk.Frame):
                     bootstyle=f"{style}-outline",
                     command=lambda url=ad.get("target_url"): webbrowser.open(url)
                 ).pack(anchor='e')
-    def refresh_content(self, event_data=None):
-        self.kernel.write_to_log("MarketplacePage received a signal to refresh its content.", "INFO")
-        self._fetch_all_data_and_refresh()
     def _get_current_tab_info(self):
         try:
             if not self.main_notebook or not self.main_notebook.winfo_exists():
@@ -157,19 +166,13 @@ class MarketplacePage(ttk.Frame):
                 self.loc.get('marketplace_tab_presets', fallback="Presets"): 'presets',
                 "Triggers": 'triggers',
                 "AI Providers": 'ai_providers',
-                "AI Models": 'ai_models' # (COMMENT) No change here
+                "AI Models": 'ai_models'
             }
             comp_type = tab_map.get(tab_text, 'modules')
             return comp_type, tree_dict.get(comp_type), is_local
         except Exception:
             return 'modules', self.local_component_trees.get('modules'), True
-    def _fetch_all_data_and_refresh(self):
-        threading.Thread(target=self._fetch_all_data_worker, daemon=True).start()
-    @log_performance("Fetching all component data for Addon Manager")
     def _fetch_all_data_worker(self):
-        """
-        Fetches all component data (local and community) in parallel threads for performance.
-        """
         threads = []
         def fetch_component_data(comp_type):
             success_local, local_data = self.api_client.get_components(comp_type)
@@ -189,6 +192,12 @@ class MarketplacePage(ttk.Frame):
         success_ads, ads_data = self.api_client.get_marketplace_ads()
         self.after(0, self._refresh_all_lists)
         self.after(0, self._populate_ads_panel, success_ads, ads_data)
+    def _refresh_all_lists(self):
+        for comp_type in self.local_component_trees.keys():
+            self._refresh_list(comp_type, self.local_component_trees.get(comp_type), self.local_cache, is_local_tab=True)
+        for comp_type in self.community_component_trees.keys():
+            self._refresh_list(comp_type, self.community_component_trees.get(comp_type), self.community_cache, is_local_tab=False)
+        self._update_button_state()
     def _refresh_list(self, component_type, tree, data_cache, is_local_tab):
         if not tree or not tree.winfo_exists():
             return
@@ -203,6 +212,7 @@ class MarketplacePage(ttk.Frame):
         for c_type in self.local_cache.keys():
             for item in self.local_cache.get(c_type, []):
                 all_local_ids.add(item['id'])
+        is_monet_active = self.kernel.is_monetization_active() # (PENAMBAHAN) Cek status monetisasi
         for component in sorted(data, key=lambda x: x.get('name', '').lower()):
             searchable_string = (f"{component.get('name', '').lower()} {component.get('id', '').lower()} {component.get('description', '').lower()}")
             if all(keyword in searchable_string for keyword in search_keywords):
@@ -215,33 +225,22 @@ class MarketplacePage(ttk.Frame):
                     else:
                         status = self.loc.get('marketplace_status_not_installed', fallback="Not Installed")
                 tags = ('paused',) if component.get('is_paused') and is_local_tab else ('enabled',)
+                values = [
+                    component.get('name', ''),
+                    component.get('description', '')
+                ]
+                if is_monet_active:
+                    values.append(component.get('tier', 'N/A').capitalize())
                 if component_type == 'ai_models':
-                    values_tuple = (
-                        component.get('name', ''),
-                        component.get('description', ''),
-                        component.get('tier', 'N/A').capitalize(),
-                        component.get('downloads', 0),
-                        status
-                    )
+                    values.append(component.get('downloads', 0))
                 else:
-                    values_tuple = (
-                        component.get('name', ''),
-                        component.get('description', ''),
-                        component.get('tier', 'N/A').capitalize(),
-                        component.get('version', ''),
-                        status
-                    )
-                tree.insert("", "end", iid=component['id'], values=values_tuple, tags=tags)
+                    values.append(component.get('version', ''))
+                values.append(status)
+                tree.insert("", "end", iid=component['id'], values=tuple(values), tags=tags)
         theme_manager = self.kernel.get_service("theme_manager")
         colors = theme_manager.get_colors() if theme_manager else {}
         tree.tag_configure('paused', foreground='grey')
         tree.tag_configure('enabled', foreground=colors.get('fg', 'white'))
-    def _refresh_all_lists(self):
-        for comp_type in self.local_component_trees.keys():
-            self._refresh_list(comp_type, self.local_component_trees.get(comp_type), self.local_cache, is_local_tab=True)
-        for comp_type in self.community_component_trees.keys():
-            self._refresh_list(comp_type, self.community_component_trees.get(comp_type), self.community_cache, is_local_tab=False)
-        self._update_button_state()
     def _on_search(self, *args):
         if not self.ui_ready: return
         self._refresh_all_lists()
@@ -270,10 +269,10 @@ class MarketplacePage(ttk.Frame):
             is_core = component_data.get('is_core', False)
             if not is_core:
                 self.uninstall_button.config(state="normal")
-                can_upload = self.kernel.is_tier_sufficient('pro')
+                can_upload = self.kernel.current_user is not None
                 self.upload_button.config(state="normal" if can_upload else "disabled")
                 is_preset = comp_type == 'presets'
-                is_model = comp_type == 'ai_models' # (COMMENT) No change here
+                is_model = comp_type == 'ai_models'
                 self.toggle_button.config(state="normal" if not is_preset and not is_model else "disabled")
                 tags = tree.item(selected_id, "tags")
                 if 'paused' in tags:
@@ -287,6 +286,11 @@ class MarketplacePage(ttk.Frame):
             self.uninstall_button.config(state="disabled")
             self.upload_button.config(state="disabled")
     def _upload_selected_component(self):
+        if not self.kernel.current_user:
+            messagebox.showwarning("Login Required", "You must be logged in to upload components to the marketplace.", parent=self)
+            if hasattr(self.kernel.root, '_open_authentication_dialog'):
+                self.kernel.root._open_authentication_dialog()
+            return
         comp_type, tree, is_local = self._get_current_tab_info()
         if not is_local or not tree: return
         selected_items = tree.selection()
@@ -380,6 +384,12 @@ class MarketplacePage(ttk.Frame):
     def _install_component(self):
         comp_type, tree, is_local = self._get_current_tab_info()
         if not is_local: # Community Tab Logic
+            if not self.kernel.is_monetization_active():
+                if not self.kernel.current_user:
+                    messagebox.showwarning("Login Required", "You must be logged in to download components from the community.", parent=self)
+                    if hasattr(self.kernel.root, '_open_authentication_dialog'):
+                        self.kernel.root._open_authentication_dialog()
+                    return # Hentikan proses install
             if not tree: return
             selected_items = tree.selection()
             if not selected_items:
@@ -429,7 +439,7 @@ class MarketplacePage(ttk.Frame):
                 with open(save_path, 'wb') as f:
                     for chunk in r.iter_content(chunk_size=8192):
                         f.write(chunk)
-            self.kernel.get_service("ai_provider_manager_service").discover_and_load_endpoints()
+            self.api_client.trigger_hot_reload()
             self.after(0, messagebox.showinfo, self.loc.get('messagebox_success_title'), f"Model '{model_name}' downloaded successfully to your ai_models folder.")
             self.after(0, self._fetch_all_data_and_refresh)
         except Exception as e:

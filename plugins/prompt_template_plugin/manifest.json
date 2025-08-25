@@ -2,6 +2,7 @@
     "id": "prompt_template_plugin",
     "name": "Prompt Template",
     "version": "2.1.0",
+    "icon_file": "icon.png",
     "author": "AWENK AUDICO",
     "email": "contributor@teetah.art",
     "website": "www.teetah.art",

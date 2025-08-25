@@ -1,12 +1,4 @@
 {
-    "module_prompt_engineer_name": "Insinyur Prompt",
-    "module_prompt_engineer_desc": "Menerjemahkan perintah sederhana menjadi prompt yang optimal dan terstruktur untuk AI.",
-    "prop_engineer_input_var_label": "Variabel Perintah Sederhana:",
-    "prop_engineer_ai_model_label": "Pilih Model AI Insinyur:",
-    "prop_engineer_persona_label": "Persona Target AI:",
-    "prop_engineer_persona_help": "Jelaskan peran AI yang akan menerima prompt final (contoh: Seorang programmer Python ahli, seorang penulis cerita kreatif).",
-    "port_success": "Sukses",
-    "port_on_failure": "Jika Gagal",
-    "prop_engineer_template_label": "Template Prompt:",
-    "prop_engineer_template_help": "Agent Executor akan secara otomatis mengisi {{tools_string}}, {{history}}, dan {{last_observation}}."
+    "module_prompt_engineer_name": "Pemformat Prompt",
+    "prop_formatter_template_var_label": "Template dari Variabel:"
 }

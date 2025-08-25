@@ -3,7 +3,7 @@
 # EMAIL SAHIDINAOLA@GMAIL.COM
 # WEBSITE WWW.TEETAH.ART
 # File NAME : C:\FLOWORK\flowork_kernel\services\module_manager_service\module_manager_service.py
-# JUMLAH BARIS : 292
+# JUMLAH BARIS : 296
 #######################################################################
 
 import os
@@ -23,6 +23,7 @@ import tempfile
 import shutil
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
+from flowork_kernel.exceptions import PermissionDeniedError
 class ComponentInstallHandler(FileSystemEventHandler):
     def __init__(self, service_instance):
         self.service = service_instance
@@ -193,6 +194,9 @@ class ModuleManagerService(BaseService):
             self.instance_cache[module_id] = module_instance
             self.loaded_modules[module_id]['instance'] = module_instance
             return module_instance
+        except PermissionDeniedError as e:
+            self.logger(f"Skipping instantiation of '{module_id}' due to insufficient permissions: {e}", "WARN")
+            return None
         except Exception as e:
             self.logger(f"CRITICAL FAILURE during Just-In-Time instantiation of '{module_id}': {e}", "CRITICAL")
             self.logger(traceback.format_exc(), "DEBUG")

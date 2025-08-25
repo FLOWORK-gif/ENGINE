@@ -3,7 +3,7 @@
 # EMAIL SAHIDINAOLA@GMAIL.COM
 # WEBSITE WWW.TEETAH.ART
 # File NAME : C:\FLOWORK\flowork_kernel\ui_shell\canvas_components\visual_manager.py
-# JUMLAH BARIS : 328
+# JUMLAH BARIS : 343
 #######################################################################
 
 import ttkbootstrap as ttk
@@ -29,6 +29,12 @@ class VisualManager:
         self._define_highlight_styles()
         self.canvas.bind("<Configure>", self._on_canvas_resize)
         self.draw_grid()
+    def _get_original_style(self, node_id):
+        """Determines the correct default style for a node (selected or normal)."""
+        if node_id == self.canvas_manager.selected_node_id:
+            return "Selected.Glass.Module.TFrame"
+        else:
+            return "Glass.Module.TFrame"
     def start_brain_pulse(self, node_id):
         if node_id in self.brain_pulse_jobs or not self.canvas.winfo_exists():
             return
@@ -258,6 +264,14 @@ class VisualManager:
         self.stop_sleeping_animation(element_id)
         if element_type == 'node':
             self.start_processing_animation(element_id)
+        elif element_type == 'tool_node':
+            if element_id not in self.canvas_manager.canvas_nodes: return
+            node_data = self.canvas_manager.canvas_nodes[element_id]
+            widget = node_data.get('widget')
+            if not widget or not widget.winfo_exists(): return
+            original_style = self._get_original_style(element_id)
+            self.canvas_manager.node_manager._apply_style_to_node_widgets(element_id, "Executing.Module.TFrame")
+            self.canvas.after(1500, lambda: self.canvas_manager.node_manager._apply_style_to_node_widgets(element_id, original_style))
         elif element_type == 'sleeping_node':
             if element_id not in self.canvas_manager.canvas_nodes: return
             widget = self.canvas_manager.canvas_nodes[element_id]['widget']
@@ -268,9 +282,10 @@ class VisualManager:
             if element_id not in self.canvas_manager.canvas_connections: return
             line_id = self.canvas_manager.canvas_connections[element_id]['line_id']
             colors = self.canvas_manager.colors
-            original_color = colors.get('success'); highlight_color = colors.get('warning')
+            original_color = colors.get('success', '#76ff7b')
+            highlight_color = colors.get('warning', '#ffc107')
             self.canvas.itemconfig(line_id, fill=highlight_color, width=3, dash=())
-            self.canvas_manager.coordinator_tab.after(400, lambda: self.canvas.itemconfig(line_id, fill=original_color, width=2, dash=(4, 4)) if self.canvas.find_withtag(line_id) else None)
+            self.canvas_manager.coordinator_tab.after(1500, lambda: self.canvas.itemconfig(line_id, fill=original_color, width=2) if self.canvas.find_withtag(line_id) else None)
     def update_node_status(self, node_id, message, level):
         if node_id not in self.canvas_manager.canvas_nodes: return
         if level.upper() in ["SUCCESS", "ERROR", "WARN"]:

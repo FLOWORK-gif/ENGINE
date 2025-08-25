@@ -3,7 +3,7 @@
 # EMAIL SAHIDINAOLA@GMAIL.COM
 # WEBSITE WWW.TEETAH.ART
 # File NAME : C:\FLOWORK\flowork_kernel\services\variable_manager_service\variable_manager_service.py
-# JUMLAH BARIS : 227
+# JUMLAH BARIS : 225
 #######################################################################
 
 import os
@@ -19,9 +19,7 @@ from flowork_kernel.exceptions import PermissionDeniedError
 class VariableManagerService(BaseService):
     """
     Acts as a secure vault for all global and secret variables.
-    [REFACTORED V4] Now gracefully handles PermissionDeniedError during autodiscovery,
-    preventing startup crashes in FREE mode.
-    [MODIFIKASI V5] Upgraded to support variable pools (multiple values) with random or sequential retrieval modes.
+    [MODIFIED V7] Removed auto-creation of Supabase variables as they are now hardcoded in ApiClient.
     """
     VARIABLES_FILENAME = "variables.json"
     def __init__(self, kernel, service_id: str):
@@ -80,7 +78,7 @@ class VariableManagerService(BaseService):
             self.logger("VariableManager: Autodiscovery complete. No new variables needed.", "INFO") # English Log
     def load_variables(self):
         with self._lock:
-            requires_save = False # (ADDED) Flag to check if we need to update the file format
+            requires_save = False
             try:
                 if os.path.exists(self.variables_file_path):
                     with open(self.variables_file_path, 'r', encoding='utf-8') as f:
@@ -193,7 +191,7 @@ class VariableManagerService(BaseService):
                     "is_enabled": is_enabled,
                     "sequential_index": 0
                 }
-            else: # (ADDED) Logic for pooled variables
+            else:
                 if not isinstance(value, list):
                     raise ValueError("Value for a pooled variable must be a list of strings.")
                 processed_values = []

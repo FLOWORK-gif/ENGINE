@@ -3,7 +3,7 @@
 # EMAIL SAHIDINAOLA@GMAIL.COM
 # WEBSITE WWW.TEETAH.ART
 # File NAME : C:\FLOWORK\flowork_kernel\kernel.py
-# JUMLAH BARIS : 412
+# JUMLAH BARIS : 427
 #######################################################################
 
 import os
@@ -167,6 +167,7 @@ class Kernel:
         self.services: Dict[str, Any] = {}
         self.root = None
         self.startup_complete = False
+        self.current_user = None
         self.data_path = os.path.join(self.project_root_path, "data")
         self.logs_path = os.path.join(self.project_root_path, "logs")
         self.modules_path = os.path.join(self.project_root_path, "modules")
@@ -190,6 +191,14 @@ class Kernel:
     @property
     def ai_manager(self):
         return self.get_service("ai_provider_manager_service")
+    @property
+    def loc(self):
+        """ (ADDED) Provides a safe, official public accessor for the LocalizationManager. """
+        return self.get_service("localization_manager")
+    @property
+    def event_bus(self):
+        """ (ADDED) Provides a safe, official public accessor for the EventBus. """
+        return self.get_service("event_bus")
     def register_ui_service(self, service_id: str, instance: object):
         if service_id in self.services:
             self.write_to_log(f"Service '{service_id}' is being overwritten by a UI-bound instance.", "WARN")
@@ -327,9 +336,8 @@ class Kernel:
         self.get_service("widget_manager_service").discover_and_load_widgets()
         self.get_service("trigger_manager_service").discover_and_load_triggers()
         self.get_service("localization_manager").load_all_languages()
-        event_bus = self.get_service("event_bus")
-        if event_bus:
-            event_bus.publish("COMPONENT_LIST_CHANGED", {"status": "hot_reloaded"})
+        if self.event_bus:
+            self.event_bus.publish("COMPONENT_LIST_CHANGED", {"status": "hot_reloaded"})
         if self.root and hasattr(self.root, 'refresh_ui_components'):
             self.root.after(100, self.root.refresh_ui_components)
         self.write_to_log("HOT RELOAD: Component reload process finished.", "SUCCESS")
@@ -347,14 +355,21 @@ class Kernel:
                 service_instance.join(timeout=2)
     def is_premium_user(self) -> bool:
         return self.is_premium
+    def is_monetization_active(self) -> bool:
+        license_manager = self.get_service("license_manager_service", is_system_call=True)
+        if license_manager and license_manager.remote_permission_rules:
+            return license_manager.remote_permission_rules.get("monetization_active", True)
+        return True
     def is_tier_sufficient(self, required_tier: str) -> bool:
+        if not self.is_monetization_active():
+            return True
         user_level = self.TIER_HIERARCHY.get(self.license_tier.lower(), 0)
         required_level = self.TIER_HIERARCHY.get(required_tier.lower(), 99)
         return user_level >= required_level
-    def activate_license_online(self, local_license_data: dict):
+    def activate_license_online(self, full_license_content: dict):
         license_manager = self.get_service("license_manager_service")
         if license_manager:
-            return license_manager.activate_license_on_server(local_license_data)
+            return license_manager.activate_license_on_server(full_license_content)
         return False, "License Manager service not found."
     def deactivate_license_online(self):
         license_manager = self.get_service("license_manager_service")

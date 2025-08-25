@@ -3,7 +3,7 @@
 # EMAIL SAHIDINAOLA@GMAIL.COM
 # WEBSITE WWW.TEETAH.ART
 # File NAME : C:\FLOWORK\modules\agent_host_module\processor.py
-# JUMLAH BARIS : 81
+# JUMLAH BARIS : 123
 #######################################################################
 
 import ttkbootstrap as ttk
@@ -13,15 +13,49 @@ from flowork_kernel.ui_shell import shared_properties
 from flowork_kernel.utils.payload_helper import get_nested_value
 from flowork_kernel.ui_shell.components.LabelledCombobox import LabelledCombobox
 import json
+import time
 class AgentHostModule(BaseModule, IExecutable, IConfigurableUI, IDataPreviewer):
     TIER = "architect"
+    MANAGES_OWN_HIGHLIGHTING = True
     def __init__(self, module_id, services):
         super().__init__(module_id, services)
         self.agent_executor = services.get("agent_executor_service")
         self.workflow_executor = self.kernel.get_service("workflow_executor_service")
+    def _update_display_widget_on_ui(self, node_id, text_to_display):
+        try:
+            canvas_manager = self.kernel.root.tab_manager.notebook.nametowidget(self.kernel.root.tab_manager.notebook.select()).canvas_area_instance.canvas_manager
+            if not canvas_manager: return
+            node_data = canvas_manager.canvas_nodes.get(node_id)
+            if not node_data: return
+            text_widget = node_data.get('status_display_widget')
+            if text_widget and text_widget.winfo_exists():
+                text_widget.config(state="normal")
+                text_widget.delete("1.0", "end")
+                text_widget.insert("1.0", str(text_to_display))
+                text_widget.config(state="disabled")
+        except Exception as e:
+            self.logger(f"Failed to update agent host UI: {e}", "WARN")
     def execute(self, payload: dict, config: dict, status_updater, ui_callback, mode='EXECUTE', **kwargs):
         if not self.agent_executor:
             raise RuntimeError("AgentExecutorService is not available, cannot run agent.")
+        node_instance_id = config.get('__internal_node_id')
+        original_highlighter = kwargs.get('highlighter')
+        connections = kwargs.get('connections', {})
+        def update_agent_host_display(text_to_display):
+            if callable(ui_callback):
+                ui_callback(self._update_display_widget_on_ui, node_instance_id, text_to_display)
+        def agent_tool_highlighter(tool_node_id):
+            if not callable(original_highlighter) or not callable(ui_callback):
+                return
+            ui_callback(original_highlighter, 'tool_node', tool_node_id)
+            connection_to_highlight = None
+            for conn_id, conn_data in connections.items():
+                if conn_data.get('from') == tool_node_id and conn_data.get('to') == node_instance_id:
+                    if conn_data.get('type') == 'tool':
+                        connection_to_highlight = conn_id
+                        break
+            if connection_to_highlight:
+                ui_callback(original_highlighter, 'connection', connection_to_highlight)
         connected_tools = kwargs.get('connected_tools', [])
         connected_brain_node = kwargs.get('connected_brain')
         connected_prompt_node = kwargs.get('connected_prompt')
@@ -35,6 +69,12 @@ class AgentHostModule(BaseModule, IExecutable, IConfigurableUI, IDataPreviewer):
             if 'data' not in payload or not isinstance(payload['data'], dict): payload['data'] = {}
             payload['data']['error'] = error_msg
             return {"payload": payload, "output_name": "error"}
+        if callable(original_highlighter) and callable(ui_callback):
+            brain_conn_id = next((cid for cid, cdata in connections.items() if cdata.get('from') == connected_brain_node['id'] and cdata.get('to') == node_instance_id), None)
+            prompt_conn_id = next((cid for cid, cdata in connections.items() if cdata.get('from') == connected_prompt_node['id'] and cdata.get('to') == node_instance_id), None)
+            if brain_conn_id: ui_callback(original_highlighter, 'connection', brain_conn_id)
+            if prompt_conn_id: ui_callback(original_highlighter, 'connection', prompt_conn_id)
+            time.sleep(0.2)
         status_updater("Getting prompt template from connected node...", "INFO")
         sub_workflow_result = self.workflow_executor.execute_workflow_synchronous(
             nodes={connected_prompt_node['id']: connected_prompt_node},
@@ -63,7 +103,9 @@ class AgentHostModule(BaseModule, IExecutable, IConfigurableUI, IDataPreviewer):
             full_prompt_template=prompt_template,
             connected_tools=connected_tools,
             ai_brain_endpoint=ai_brain_endpoint,
-            status_updater=status_updater
+            status_updater=status_updater,
+            agent_display_updater=update_agent_host_display,
+            agent_tool_highlighter=agent_tool_highlighter
         )
         if 'data' not in payload or not isinstance(payload['data'], dict):
             payload['data'] = {}

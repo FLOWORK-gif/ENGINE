@@ -2,6 +2,7 @@
     "id": "article_generator_tools",
     "name": "Article Generator Tools",
     "version": "1.2.0",
+    "icon_file": "icon.png",
     "author": "AWENK AUDICO & Gemini",
     "email": "contributor@teetah.art",
     "website": "www.teetah.art",
@@ -9,8 +10,14 @@
     "type": "PLUGIN",
     "entry_point": "processor.ArticleGeneratorModule",
     "tier": "free",
-    "behaviors": [ "retry" ],
-    "requires_services": [ "logger", "loc", "kernel" ],
+    "behaviors": [
+        "retry"
+    ],
+    "requires_services": [
+        "logger",
+        "loc",
+        "kernel"
+    ],
     "display_properties": {
         "shape": "agent_brain",
         "icon_file": "icon.png"

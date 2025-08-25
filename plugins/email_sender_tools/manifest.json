@@ -2,6 +2,7 @@
     "id": "email_sender_tools",
     "name": "Email Sender Tools",
     "version": "1.3.0",
+    "icon_file": "icon.png",
     "author": "awenk audico",
     "email": "sahidinaola@gmail.com",
     "website": "www.teetah.art",
