@@ -1,7 +1,0 @@
-{
-    "module_name": "Lihat Variabel Global",
-    "prop_view_global_title": "Variabel Global untuk Dilihat",
-    "prop_view_global_variable_label": "Variabel Global:",
-    "popup_title_viewing": "Melihat Variabel Global: {variable}",
-    "popup_content_var_not_found": "Variabel global '{variable}' tidak ditemukan atau sedang nonaktif."
-}

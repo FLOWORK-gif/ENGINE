@@ -1,7 +1,0 @@
-{
-    "module_name": "View Global Variable",
-    "prop_view_global_title": "Global Variable to View",
-    "prop_view_global_variable_label": "Global Variable:",
-    "popup_title_viewing": "Viewing Global Variable: {variable}",
-    "popup_content_var_not_found": "Global variable '{variable}' not found or is disabled."
-}

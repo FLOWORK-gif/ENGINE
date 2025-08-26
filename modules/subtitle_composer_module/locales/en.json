@@ -1,8 +1,0 @@
-{
-    "module_name": "Subtitle Composer",
-    "prop_subtitle_entries_label": "Subtitle Entries",
-    "prop_subtitle_start_label": "Start Time (HH:MM:SS.ms)",
-    "prop_subtitle_end_label": "End Time (HH:MM:SS.ms)",
-    "prop_subtitle_text_label": "Subtitle Text",
-    "prop_subtitle_add_button": "Add Subtitle Line"
-}

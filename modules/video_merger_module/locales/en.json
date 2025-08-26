@@ -1,9 +1,0 @@
-{
-    "module_name": "Video Merger",
-    "prop_merge_method_label": "Merge Method:",
-    "merge_method_fast": "Fast (Stream Copy)",
-    "merge_method_compatible": "Compatible (Re-encode)",
-    "ffmpeg_not_found_error": "FFmpeg not found! Please place ffmpeg.exe in the 'vendor/ffmpeg/bin' directory.",
-    "status_creating_ffmpeg_list": "Creating video list for FFmpeg...",
-    "status_merging_with_ffmpeg": "Merging videos with FFmpeg (Stream Copy)..."
-}

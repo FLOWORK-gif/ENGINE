@@ -1,7 +1,0 @@
-{
-    "prop_path_source_title": "Sumber Path Asal",
-    "prop_dest_path_source_title": "Sumber Path Tujuan",
-    "prop_mode_manual": "Path Manual",
-    "prop_mode_dynamic": "Dinamis dari Payload",
-    "prop_path_input_key_label": "Ambil Path dari Variabel:"
-}

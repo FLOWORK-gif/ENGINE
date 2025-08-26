@@ -1,9 +1,0 @@
-{
-    "module_receiver_name": "Data Receiver",
-    "module_receiver_description": "Receives data wirelessly from a 'Data Sender' node. This node does not need an input wire.",
-    "prop_receiver_title": "Receiver Information",
-    "receiver_id_info": "The unique ID for this node is:\n{id}\n\nCopy this ID and use it in a 'Data Sender' node's properties to send data here.",
-    "receiver_log_message": "Message received by '{id}' from sender '{publisher}'.",
-    "receiver_status_listening": "Listening for data...",
-    "copy_id_button": "Copy ID"
-}

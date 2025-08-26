@@ -1,8 +1,0 @@
-{
-    "module_name": "Penyusun Subtitle",
-    "prop_subtitle_entries_label": "Baris Subtitle",
-    "prop_subtitle_start_label": "Waktu Mulai (JJ:MM:DD.ms)",
-    "prop_subtitle_end_label": "Waktu Selesai (JJ:MM:DD.ms)",
-    "prop_subtitle_text_label": "Teks Subtitle",
-    "prop_subtitle_add_button": "Tambah Baris Subtitle"
-}

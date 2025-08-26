@@ -1,7 +1,0 @@
-{
-    "module_name": "Social Media Downloader (yt-dlp)",
-    "prop_url_list_variable_label": "URL List Variable:",
-    "prop_url_key_in_object_label": "URL Key in Object:",
-    "prop_output_folder_label": "Output Folder:",
-    "prop_video_quality_label": "Video Quality:"
-}

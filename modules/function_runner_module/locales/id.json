@@ -1,9 +1,0 @@
-{
-    "module_function_runner_name": "Jalankan Kode Python (Nano)",
-    "module_function_runner_desc": "Mengeksekusi cuplikan kode Python sederhana secara langsung untuk memanipulasi payload. Fondasi dari konsep Nano-Modular.",
-    "prop_python_code_label": "Kode Python untuk dieksekusi:",
-    "prop_python_code_desc": "Tulis kode Python Anda di sini. Dictionary 'payload' tersedia. Gunakan 'return' untuk menghasilkan output baru.",
-    "port_success": "Sukses",
-    "port_on_failure": "Jika Gagal",
-    "prop_available_vars_label": "Variabel Input Tersedia (Read-Only)"
-}

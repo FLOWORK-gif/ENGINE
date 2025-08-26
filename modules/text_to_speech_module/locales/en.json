@@ -1,5 +1,0 @@
-{
-    "tts_prop_title": "Text to Speech Settings",
-    "tts_prop_model_label": "Local TTS Model:",
-    "tts_prop_source_label": "Text Input Variable:"
-}

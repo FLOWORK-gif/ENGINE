@@ -1,5 +1,0 @@
-{
-  "module_dyn_gen_name": "Dynamic Node Generator",
-  "module_dyn_gen_desc": "Dynamically creates multiple new nodes while the workflow is running. Useful for processing items in a list in parallel or in a chain.",
-  "module_dyn_gen_tutorial": "HOW TO USE:\n1. Open Properties, specify how many new nodes you want to create.\n2. Set a name prefix for these new nodes.\n3. Choose 'Connection Mode': 'Chained' (one by one) or 'Parallel' (all at once).\n4. Connect the 'Continue to Next Node' output to the node you want to use as a template to be recreated."
-}

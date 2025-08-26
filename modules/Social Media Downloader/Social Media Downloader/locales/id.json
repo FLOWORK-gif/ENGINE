@@ -1,8 +1,0 @@
-{
-    "module_name": "Pengunduh Media Sosial (yt-dlp)",
-    "prop_url_list_variable_label": "Variabel List URL:",
-    "prop_url_key_in_object_label": "Kunci URL di dalam Objek:",
-    "prop_output_folder_label": "Folder Output:",
-    "prop_video_quality_label": "Kualitas Video:",
-    
-}

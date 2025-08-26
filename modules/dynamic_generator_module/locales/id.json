@@ -1,5 +1,0 @@
-{
-  "module_dyn_gen_name": "Generator Node Dinamis",
-  "module_dyn_gen_desc": "Membuat beberapa node baru secara dinamis saat alur kerja sedang berjalan. Berguna untuk memproses item dalam sebuah daftar secara paralel atau berantai.",
-  "module_dyn_gen_tutorial": "CARA PENGGUNAAN:\n1. Buka Properti, tentukan berapa banyak node baru yang ingin dibuat.\n2. Atur awalan nama untuk node-node baru tersebut.\n3. Pilih 'Mode Koneksi': 'Berantai' (satu per satu) atau 'Paralel' (semua sekaligus).\n4. Hubungkan output 'Lanjutkan ke Node Berikutnya' ke node yang ingin Anda jadikan pola untuk dibuat ulang."
-}

@@ -1,9 +1,0 @@
-{
-    "module_function_runner_name": "Run Python Code (Nano)",
-    "module_function_runner_desc": "Executes a simple Python code snippet directly to manipulate the payload. The foundation of the Nano-Modular concept.",
-    "prop_python_code_label": "Python Code to Execute:",
-    "prop_python_code_desc": "Write your Python code here. The 'payload' dictionary is available. Use 'return' to produce a new output.",
-    "port_success": "Success",
-    "port_on_failure": "On Failure",
-    "prop_available_vars_label": "Available Input Variables (Read-Only)"
-}

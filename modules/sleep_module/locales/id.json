@@ -1,8 +1,0 @@
-{
-    "prop_sleep_title": "Konfigurasi Jeda (Sleep)",
-    "log_sleep_static": "Menjeda eksekusi selama {duration} detik...",
-    "status_sleep_countdown": "Menjeda... {seconds} detik lagi",
-    "status_sleep_finished": "Jeda selesai!",
-    "log_sleep_finished": "Jeda selesai, melanjutkan alur kerja.",
-    "status_sleep_simulating": "Simulasi: Jeda {duration:.2f} dtk"
-}

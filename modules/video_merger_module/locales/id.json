@@ -1,9 +1,0 @@
-{
-    "module_name": "Penggabung Video",
-    "prop_merge_method_label": "Metode Penggabungan:",
-    "merge_method_fast": "Cepat (Stream Copy)",
-    "merge_method_compatible": "Kompatibel (Render Ulang)",
-    "ffmpeg_not_found_error": "FFmpeg tidak ditemukan! Harap letakkan ffmpeg.exe di dalam direktori 'vendor/ffmpeg/bin'.",
-    "status_creating_ffmpeg_list": "Membuat daftar video untuk FFmpeg...",
-    "status_merging_with_ffmpeg": "Menggabungkan video dengan FFmpeg (Stream Copy)..."
-}

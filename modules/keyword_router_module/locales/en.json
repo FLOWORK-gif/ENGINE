@@ -1,9 +1,0 @@
-{
-    "keyword_router_default_port": "Default / No Match",
-    "keyword_router_input_source_title": "Input Text Source",
-    "keyword_router_input_variable_label": "Use Variable from Payload:",
-    "keyword_router_rules_title": "Keyword-Based Routing Rules",
-    "keyword_router_keywords_header": "Keywords (comma-separated)",
-    "keyword_router_output_header": "Output Port Name",
-    "keyword_router_add_rule_btn": "Add New Rule"
-}

@@ -1,7 +1,0 @@
-{
-    "prop_path_source_title": "Source Path Source",
-    "prop_dest_path_source_title": "Destination Path Source",
-    "prop_mode_manual": "Manual Path",
-    "prop_mode_dynamic": "Dynamic from Payload",
-    "prop_path_input_key_label": "Get Path from Variable:"
-}

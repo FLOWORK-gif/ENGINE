@@ -1,8 +1,0 @@
-{
-    "prop_sleep_title": "Sleep Configuration",
-    "log_sleep_static": "Sleeping for {duration} seconds...",
-    "status_sleep_countdown": "Sleeping... {seconds} seconds remaining",
-    "status_sleep_finished": "Sleep finished!",
-    "log_sleep_finished": "Sleep complete, resuming workflow.",
-    "status_sleep_simulating": "Simulating: Sleep {duration:.2f} sec"
-}
